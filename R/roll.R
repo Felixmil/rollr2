@@ -60,6 +60,9 @@ roll <- function(notation) {
   )
 }
 
+#' @param x A `roll` object, as returned by `roll()`.
+#' @param ... Ignored, for compatibility with the [print()] generic.
+#' @rdname roll
 #' @export
 print.roll <- function(x, ...) {
   cat("<roll> ", x$notation, "\n", sep = "")

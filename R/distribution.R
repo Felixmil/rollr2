@@ -96,6 +96,9 @@ roll_distribution <- function(notation, n) {
   )
 }
 
+#' @param x A `roll_distribution` object, as returned by `roll_distribution()`.
+#' @param ... Ignored, for compatibility with the [print()] generic.
+#' @rdname roll_distribution
 #' @export
 print.roll_distribution <- function(x, ...) {
   cat("<roll_distribution> ", x$notation, "\n", sep = "")

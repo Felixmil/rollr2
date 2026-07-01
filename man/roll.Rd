@@ -2,9 +2,12 @@
 % Please edit documentation in R/roll.R
 \name{roll}
 \alias{roll}
+\alias{print.roll}
 \title{Roll dice from notation once}
 \usage{
 roll(notation)
+
+\method{print}{roll}(x, ...)
 }
 \arguments{
 \item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
@@ -13,6 +16,10 @@ whitespace-tolerant). An optional keep selector \code{h}/\code{l} with an option
 count may follow the die size (e.g. \verb{2d20h}, \verb{4d6h3}, \verb{3d6l2}); it keeps
 the highest (\code{h}) or lowest (\code{l}) \code{K} dice, defaulting to \code{K = 1}. See
 \code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
+
+\item{x}{A \code{roll} object, as returned by \code{roll()}.}
+
+\item{...}{Ignored, for compatibility with the \code{\link[=print]{print()}} generic.}
 }
 \value{
 A \code{roll} object: a list with \code{dice} (integer vector of length \code{N},

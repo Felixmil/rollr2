@@ -8,6 +8,15 @@
 \description{
 Parses and rolls tabletop RPG dice notation such as "2d20+2", reporting individual die results, totals, and the outcome distribution across repeated rolls.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/Felixmil/rollr2}
+  \item \url{https://felixmil.github.io/rollr2/}
+  \item Report bugs at \url{https://github.com/Felixmil/rollr2/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Felix Mil \email{felix.mil@esqlabs.com}
 

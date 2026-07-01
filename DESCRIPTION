@@ -7,12 +7,18 @@ Description: Parses and rolls tabletop RPG dice notation such as "2d20+2",
     reporting individual die results, totals, and the outcome distribution
     across repeated rolls.
 License: MIT + file LICENSE
+URL: https://github.com/Felixmil/rollr2, https://felixmil.github.io/rollr2/
+BugReports: https://github.com/Felixmil/rollr2/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
 Imports:
     rlang
 Suggests:
+    ggplot2,
+    knitr,
+    quarto,
     testthat (>= 3.0.0),
     withr
+VignetteBuilder: quarto
 Config/testthat/edition: 3
