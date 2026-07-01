@@ -7,6 +7,16 @@
       Dice:  10, 19
       Total: 31
 
+# print.roll shows the kept dice when a selector is present
+
+    Code
+      print(roll("4d6h3"))
+    Output
+      <roll> 4d6h3
+      Dice:  2, 3, 4, 2
+      Kept:  4, 3, 2
+      Total: 9
+
 # roll surfaces parse errors
 
     Code

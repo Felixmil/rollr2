@@ -31,9 +31,61 @@ test_that("rolls are reproducible under a fixed seed", {
   expect_equal(first$total, second$total)
 })
 
+test_that("keep-highest and keep-lowest select a single die for the total", {
+  withr::local_seed(42)
+  high <- roll("2d20h")
+  expect_length(high$dice, 2L)
+  expect_equal(high$total, max(high$dice))
+
+  withr::local_seed(42)
+  low <- roll("2d20l")
+  expect_length(low$dice, 2L)
+  expect_equal(low$total, min(low$dice))
+})
+
+test_that("an explicit keep count sums the chosen highest or lowest dice", {
+  withr::local_seed(11)
+  high <- roll("4d6h3")
+  expect_length(high$dice, 4L)
+  expect_equal(high$total, sum(sort(high$dice, decreasing = TRUE)[1:3]))
+
+  withr::local_seed(11)
+  low <- roll("3d6l2")
+  expect_length(low$dice, 3L)
+  expect_equal(low$total, sum(sort(low$dice)[1:2]))
+})
+
+test_that("the modifier applies once to the kept sum", {
+  withr::local_seed(5)
+  result <- roll("4d6h3+2")
+  expect_equal(
+    result$total,
+    sum(sort(result$dice, decreasing = TRUE)[1:3]) + 2L
+  )
+})
+
+test_that("keeping all dice equals the plain roll under the same seed", {
+  keep_all <- withr::with_seed(23, roll("2d6h2"))
+  plain <- withr::with_seed(23, roll("2d6"))
+  expect_equal(keep_all$dice, plain$dice)
+  expect_equal(keep_all$total, plain$total)
+})
+
+test_that("selector rolls are reproducible under a fixed seed", {
+  first <- withr::with_seed(77, roll("4d6h3"))
+  second <- withr::with_seed(77, roll("4d6h3"))
+  expect_equal(first$dice, second$dice)
+  expect_equal(first$total, second$total)
+})
+
 test_that("print.roll renders notation, dice, and total", {
   withr::local_seed(7)
   expect_snapshot(print(roll("2d20+2")))
+})
+
+test_that("print.roll shows the kept dice when a selector is present", {
+  withr::local_seed(7)
+  expect_snapshot(print(roll("4d6h3")))
 })
 
 test_that("roll surfaces parse errors", {

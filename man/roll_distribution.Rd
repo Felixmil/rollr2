@@ -9,7 +9,9 @@ roll_distribution(notation, n)
 \arguments{
 \item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
 \code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive \code{d},
-whitespace-tolerant).}
+whitespace-tolerant). An optional keep selector \code{h}/\code{l} with an optional
+count may follow the die size (e.g. \verb{2d20h}, \verb{4d6h3}), keeping the
+highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}).}
 
 \item{n}{Number of whole-notation rolls to simulate. A positive integer.}
 }
@@ -17,17 +19,22 @@ whitespace-tolerant).}
 A \code{roll_distribution} object: a list with \code{counts} (an integer
 vector of observed totals, named by outcome value, ordered ascending;
 zero-count outcomes are omitted), \code{range} (the theoretical
-\code{c(min, max)} of a total, \code{c(N + M, N * X + M)}), \code{n}, the parsed
-components \code{dice_n}, \code{x}, \code{m}, and the original \code{notation}. Its \code{print()}
-method renders the counts and a text histogram for the console.
+\code{c(min, max)} of a total, \code{c(K + M, K * X + M)} where \code{K} is the kept
+count, equal to the die count \code{N} when there is no selector), \code{n}, the
+parsed components \code{dice_n}, \code{x}, \code{m}, \code{keep}, \code{keep_n}, and the original
+\code{notation}. Its \code{print()} method renders the counts and a text histogram
+for the console.
 }
 \description{
 Simulates \code{n} whole-notation rolls and summarises the distribution of the
 resulting totals. The distribution is sampled (not computed analytically),
-so results vary run to run unless a seed is fixed with \code{\link[=set.seed]{set.seed()}}.
+so results vary run to run unless a seed is fixed with \code{\link[=set.seed]{set.seed()}}. A keep
+selector (\code{h}/\code{l}) is applied per simulated roll before summing, so each
+total reflects the kept dice plus the modifier.
 }
 \examples{
 set.seed(1)
 roll_distribution("2d6", n = 1000)
+roll_distribution("4d6h3", n = 1000)
 
 }
