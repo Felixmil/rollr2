@@ -49,6 +49,23 @@ test_that("an explicit keep count sets the range from the kept dice", {
   expect_equal(sum(dist$counts), 1000L)
 })
 
+test_that("a selector on a single die keeps every simulated roll", {
+  withr::local_seed(13)
+  dist <- roll_distribution("d20h", n = 1000)
+
+  expect_equal(dist$range, c(1L, 20L))
+  outcomes <- as.integer(names(dist$counts))
+  expect_true(all(outcomes >= dist$range[1] & outcomes <= dist$range[2]))
+  expect_equal(sum(dist$counts), 1000L)
+})
+
+test_that("keeping the one die of a single-die roll equals the plain die", {
+  with_selector <- withr::with_seed(14, roll_distribution("d20h", n = 1000))
+  plain <- withr::with_seed(14, roll_distribution("d20", n = 1000))
+
+  expect_equal(with_selector$counts, plain$counts)
+})
+
 test_that("a selector with a large die space bins over the kept range", {
   withr::local_seed(12)
   dist <- roll_distribution("10d100h5+5", n = 5000)

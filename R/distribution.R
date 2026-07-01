@@ -53,8 +53,17 @@ roll_distribution <- function(notation, n) {
     totals <- rowSums(rolls) + m
   } else {
     # Sort each row ascending, then sum the kept slice: the top `keep_n`
-    # columns for highest, the bottom `keep_n` for lowest.
-    sorted <- t(apply(rolls, 1L, sort))
+    # columns for highest, the bottom `keep_n` for lowest. `apply(..., sort)`
+    # returns a `dice_n`-by-`n` result when `dice_n >= 2` but collapses to a
+    # length-`n` vector when `dice_n == 1`; rebuilding the matrix explicitly
+    # (rather than relying on `t()`) keeps the `n`-by-`dice_n` orientation for
+    # any `dice_n`, including 1.
+    sorted <- matrix(
+      apply(rolls, 1L, sort),
+      nrow = n,
+      ncol = dice_n,
+      byrow = TRUE
+    )
     cols <- if (keep == "h") {
       seq(dice_n - keep_n + 1L, dice_n)
     } else {
