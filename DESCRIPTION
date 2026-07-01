@@ -1,0 +1,15 @@
+Package: rollr2
+Title: Roll Tabletop RPG Dice from Notation
+Version: 0.0.0.9000
+Authors@R:
+    person("Felix", "Mil", , "felix.mil@esqlabs.com", role = c("aut", "cre"))
+Description: Parses and rolls tabletop RPG dice notation such as "2d20+2",
+    reporting individual die results, totals, and the outcome distribution
+    across repeated rolls.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
