@@ -1,0 +1,24 @@
+url: https://felixmil.github.io/rollr2/
+
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left: [intro, articles, reference, news]
+    right: [search, github]
+  components:
+    articles:
+      text: Articles
+      menu:
+      - text: Visualising roll distributions
+        href: articles/distributions.html
+
+reference:
+- title: Rolling dice
+  desc: >
+    Roll dice from notation and summarise repeated rolls. Each page also
+    documents the print method for its result object.
+  contents:
+  - roll
+  - roll_distribution

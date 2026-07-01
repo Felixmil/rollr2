@@ -3,3 +3,8 @@
 .RData
 .Ruserdata
 *.Rproj
+docs
+/.quarto/
+/_freeze/
+*_files/
+*_cache/

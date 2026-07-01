@@ -2,9 +2,12 @@
 % Please edit documentation in R/distribution.R
 \name{roll_distribution}
 \alias{roll_distribution}
+\alias{print.roll_distribution}
 \title{Summarise the outcome distribution of repeated rolls}
 \usage{
 roll_distribution(notation, n)
+
+\method{print}{roll_distribution}(x, ...)
 }
 \arguments{
 \item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
@@ -14,6 +17,10 @@ count may follow the die size (e.g. \verb{2d20h}, \verb{4d6h3}), keeping the
 highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}).}
 
 \item{n}{Number of whole-notation rolls to simulate. A positive integer.}
+
+\item{x}{A \code{roll_distribution} object, as returned by \code{roll_distribution()}.}
+
+\item{...}{Ignored, for compatibility with the \code{\link[=print]{print()}} generic.}
 }
 \value{
 A \code{roll_distribution} object: a list with \code{counts} (an integer
