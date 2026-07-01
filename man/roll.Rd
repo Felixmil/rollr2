@@ -9,20 +9,29 @@ roll(notation)
 \arguments{
 \item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
 \code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive \code{d},
-whitespace-tolerant). See \code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
+whitespace-tolerant). An optional keep selector \code{h}/\code{l} with an optional
+count may follow the die size (e.g. \verb{2d20h}, \verb{4d6h3}, \verb{3d6l2}); it keeps
+the highest (\code{h}) or lowest (\code{l}) \code{K} dice, defaulting to \code{K = 1}. See
+\code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
 }
 \value{
 A \code{roll} object: a list with \code{dice} (integer vector of length \code{N},
-each in \verb{1..X}), \code{total} (integer scalar equal to \code{sum(dice) + M}), the
-parsed components \code{n}, \code{x}, \code{m}, and the original \code{notation}.
+each in \verb{1..X}, listing every die rolled), \code{total} (integer scalar equal
+to the sum of the kept dice plus \code{M}), \code{kept} (the kept dice, equal to
+\code{dice} when there is no selector), the parsed components \code{n}, \code{x}, \code{m},
+\code{keep}, \code{keep_n}, and the original \code{notation}.
 }
 \description{
 Parses a dice-notation string and simulates a single roll: \code{N} independent
-uniform draws from \verb{1..X}, summed and adjusted by the modifier \code{M}.
+uniform draws from \verb{1..X}, summed and adjusted by the modifier \code{M}. When
+the notation carries a keep selector (\code{h}/\code{l}), only the highest or lowest
+\code{K} of the rolled dice contribute to the total; the modifier is still
+applied once to that kept sum.
 }
 \examples{
 set.seed(1)
 roll("2d20+2")
 roll("d6")
+roll("4d6h3")
 
 }

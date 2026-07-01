@@ -1,3 +1,41 @@
+# an invalid keep count is rejected
+
+    Code
+      parse_notation("2d20h0")
+    Condition
+      Error in `parse_notation()`:
+      ! Keep count must be at least 1.
+      i Received keep count 0 in "2d20h0".
+
+---
+
+    Code
+      parse_notation("2d6h5")
+    Condition
+      Error in `parse_notation()`:
+      ! Keep count cannot exceed the number of dice.
+      i Received keep count 5 for 2 dice in "2d6h5".
+
+# a malformed selector is rejected as invalid notation
+
+    Code
+      parse_notation("2d6h-1")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6h-1".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+---
+
+    Code
+      parse_notation("2d6h1.5")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6h1.5".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
 # unparseable notation is rejected
 
     Code
