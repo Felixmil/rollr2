@@ -13,11 +13,14 @@ roll_distribution(notation, n)
 \method{plot}{roll_distribution}(x, ...)
 }
 \arguments{
-\item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
-\code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive \code{d},
-whitespace-tolerant). An optional keep selector \code{h}/\code{l} with an optional
-count may follow the die size (e.g. \verb{2d20h}, \verb{4d6h3}), keeping the
-highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}).}
+\item{notation}{A length-1 character string. A single dice term is \code{NdX},
+\code{NdX+M}, \code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive
+\code{d}, whitespace-tolerant), optionally with a keep selector \code{h}/\code{l} and an
+optional count after the die size (e.g. \verb{2d20h}, \verb{4d6h3}), keeping the
+highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}). Several such
+terms, plus bare integer constants, may be joined with \code{+} or \code{-} into one
+notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}); at least one dice term is
+required and each keep selector applies within its own term only.}
 
 \item{n}{Number of whole-notation rolls to simulate. A positive integer.}
 
@@ -29,19 +32,22 @@ generics.}
 \value{
 A \code{roll_distribution} object: a list with \code{counts} (an integer
 vector of observed totals, named by outcome value, ordered ascending;
-zero-count outcomes are omitted), \code{range} (the theoretical
-\code{c(min, max)} of a total, \code{c(K + M, K * X + M)} where \code{K} is the kept
-count, equal to the die count \code{N} when there is no selector), \code{n}, the
-parsed components \code{dice_n}, \code{x}, \code{m}, \code{keep}, \code{keep_n}, and the original
-\code{notation}. Its \code{print()} method renders the counts and a text histogram
-for the console.
+zero-count outcomes are omitted), \code{range} (the theoretical \code{c(min, max)}
+of a grand total, the sum across terms of each term's own min/max plus the
+signed constants), \code{n}, \code{terms} (the parsed per-term breakdown), and the
+original \code{notation}. For a single-term notation the parsed components
+\code{dice_n}, \code{x}, \code{m}, \code{keep}, \code{keep_n} are also present at the top level;
+they are omitted for a multi-term notation. Its \code{print()} method renders
+the counts and a text histogram for the console.
 }
 \description{
 Simulates \code{n} whole-notation rolls and summarises the distribution of the
 resulting totals. The distribution is sampled (not computed analytically),
-so results vary run to run unless a seed is fixed with \code{\link[=set.seed]{set.seed()}}. A keep
-selector (\code{h}/\code{l}) is applied per simulated roll before summing, so each
-total reflects the kept dice plus the modifier.
+so results vary run to run unless a seed is fixed with \code{\link[=set.seed]{set.seed()}}. A
+notation may be a sum of several terms joined by \code{+}/\code{-}; each simulated
+roll draws every dice term, applies each term's keep selector (\code{h}/\code{l})
+within that term before summing, and adds the term modifiers and any bare
+integer constants, so each total is the grand total across all terms.
 }
 \details{
 \code{plot()} returns a themed \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} bar chart of the sampled
@@ -53,5 +59,6 @@ with \code{+}.
 set.seed(1)
 roll_distribution("2d6", n = 1000)
 roll_distribution("4d6h3", n = 1000)
+roll_distribution("1d20+1d6", n = 1000)
 
 }

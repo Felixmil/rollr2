@@ -13,12 +13,15 @@ roll(notation, compare = FALSE)
 \method{plot}{roll}(x, ...)
 }
 \arguments{
-\item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
-\code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive \code{d},
-whitespace-tolerant). An optional keep selector \code{h}/\code{l} with an optional
-count may follow the die size (e.g. \verb{2d20h}, \verb{4d6h3}, \verb{3d6l2}); it keeps
-the highest (\code{h}) or lowest (\code{l}) \code{K} dice, defaulting to \code{K = 1}. See
-\code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
+\item{notation}{A length-1 character string. A single dice term is \code{NdX},
+\code{NdX+M}, \code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive
+\code{d}, whitespace-tolerant), optionally with a keep selector \code{h}/\code{l} and an
+optional count after the die size (e.g. \verb{2d20h}, \verb{4d6h3}, \verb{3d6l2}), which
+keeps the highest (\code{h}) or lowest (\code{l}) \code{K} dice (defaulting to \code{K = 1}).
+Several such terms, plus bare integer constants, may be joined with \code{+} or
+\code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}, \verb{1d20+1d6+1d4+3});
+at least one dice term is required and each keep selector applies within
+its own term only. See \code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
 
 \item{compare}{A length-1 logical. When \code{TRUE}, printing the roll also
 shows where the total sits within the notation's full theoretical outcome
@@ -34,19 +37,25 @@ roll itself. The comparison is computed, not sampled, so a given
 generics.}
 }
 \value{
-A \code{roll} object: a list with \code{dice} (integer vector of length \code{N},
-each in \verb{1..X}, listing every die rolled), \code{total} (integer scalar equal
-to the sum of the kept dice plus \code{M}), \code{kept} (the kept dice, equal to
-\code{dice} when there is no selector), the parsed components \code{n}, \code{x}, \code{m},
-\code{keep}, \code{keep_n}, the original \code{notation}, and \code{compare} (the logical
-flag from the argument, controlling the print method).
+A \code{roll} object: a list with \code{dice} (integer vector listing every
+die rolled, the concatenation of all dice terms in term order), \code{total}
+(integer scalar grand total: the sum of each term's signed contribution),
+\code{kept} (the dice that contribute, the concatenation of each term's kept
+dice in term order), \code{terms} (the per-term breakdown, each element a list
+with the term's parsed fields plus its \code{dice}, \code{kept}, and \code{subtotal}),
+the original \code{notation}, and \code{compare} (the logical flag controlling the
+print method). For a single-term notation the parsed components \code{n}, \code{x},
+\code{m}, \code{keep}, \code{keep_n} are also present at the top level; they are omitted
+for a multi-term notation, where per-term access via \code{terms} is required.
 }
 \description{
-Parses a dice-notation string and simulates a single roll: \code{N} independent
-uniform draws from \verb{1..X}, summed and adjusted by the modifier \code{M}. When
-the notation carries a keep selector (\code{h}/\code{l}), only the highest or lowest
-\code{K} of the rolled dice contribute to the total; the modifier is still
-applied once to that kept sum.
+Parses a dice-notation string and simulates a single roll. A notation may
+be a sum of several terms joined by \code{+}/\code{-} (for example \verb{1d20+1d6+3}); each
+dice term draws \code{N} independent uniform values from \verb{1..X}, keeps the
+highest/lowest \code{K} when it carries a selector, and contributes its kept sum
+plus its own modifier \code{M}. A \code{-} before a term subtracts that term's whole
+contribution. Bare integer terms (constants) are added directly. The grand
+\code{total} is the sum of every term's signed contribution.
 }
 \details{
 \code{plot()} returns a themed \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} bar chart of the notation's
@@ -61,6 +70,7 @@ set.seed(1)
 roll("2d20+2")
 roll("d6")
 roll("4d6h3")
+roll("1d20+1d6+3")
 roll("2d6", compare = TRUE)
 
 }

@@ -159,3 +159,113 @@ test_that("a wide-range comparison stays complete and finite", {
 
   expect_length(block, 992L)
 })
+
+# Multi-term notation ----
+
+test_that("a multi-term roll totals every term's contribution (AC-2)", {
+  withr::local_seed(42)
+  result <- roll("1d20+1d6+1d4+3")
+
+  # Grand total is each dice term's kept-dice sum plus the summed constants;
+  # here every term keeps all its dice and the trailing +3 binds to 1d4 as its
+  # modifier, so the total is the sum of all dice plus 3.
+  expect_equal(result$total, sum(result$dice) + 3L)
+  expect_length(result$terms, 3L)
+})
+
+test_that("flat dice and kept concatenate every term in order", {
+  withr::local_seed(7)
+  result <- roll("2d20h+2d20l")
+
+  expect_equal(
+    result$dice,
+    c(result$terms[[1]]$dice, result$terms[[2]]$dice)
+  )
+  expect_equal(
+    result$kept,
+    c(result$terms[[1]]$kept, result$terms[[2]]$kept)
+  )
+  # Grand total is the two kept dice summed (highest of the first pair, lowest
+  # of the second).
+  expect_equal(result$total, sum(result$kept))
+})
+
+test_that("a negated term subtracts its contribution", {
+  withr::local_seed(3)
+  result <- roll("2d20h-1d6")
+
+  high <- max(result$terms[[1]]$dice)
+  low_term <- result$terms[[2]]$dice
+  expect_equal(result$total, high - low_term)
+  expect_length(result$terms, 2L)
+})
+
+test_that("a constant term consumes no RNG so the dice stream is unchanged", {
+  # A leading constant must not shift the RNG stream: the dice drawn for the
+  # dice term match a bare roll of that term under the same seed.
+  with_const <- withr::with_seed(1, roll("3+2d6"))
+  plain <- withr::with_seed(1, roll("2d6"))
+  expect_equal(with_const$terms[[2]]$dice, plain$dice)
+  expect_equal(with_const$total, plain$total + 3L)
+})
+
+test_that("multi-term rolls are reproducible under a fixed seed", {
+  first <- withr::with_seed(123, roll("1d20+1d6+3"))
+  second <- withr::with_seed(123, roll("1d20+1d6+3"))
+  expect_equal(first$dice, second$dice)
+  expect_equal(first$total, second$total)
+})
+
+test_that("print.roll shows one Dice line per term and a grand total (AC-3)", {
+  withr::local_seed(7)
+  expect_snapshot(print(roll("1d20+1d6+1d4+3")))
+})
+
+test_that("print.roll groups a Kept line under each selector term", {
+  withr::local_seed(7)
+  expect_snapshot(print(roll("2d20h+2d20l")))
+})
+
+test_that("compare works for a multi-term keep notation (AC-5)", {
+  withr::local_seed(5)
+  expect_snapshot(print(roll("2d20h+2d20l", compare = TRUE)))
+})
+
+test_that("compare places the marked bar across a negative-capable range", {
+  # 2d20h-1d6 spans a range that dips below zero; the marked bar must land
+  # correctly within it.
+  withr::local_seed(3)
+  expect_snapshot(print(roll("2d20h-1d6", compare = TRUE)))
+})
+
+test_that("a multi-term compare PMF sums to 1 over the full range", {
+  pmf <- grand_total_pmf(parse_notation("2d20h+2d20l")$terms)
+  expect_equal(sum(pmf), 1)
+  expect_equal(as.integer(names(pmf)), seq(2L, 40L))
+})
+
+test_that("the multi-term standing is deterministic and seed-independent", {
+  # The standing is a pure function of (terms, total): a concrete, repeatable
+  # value, and identical no matter what RNG seed is active when it is computed.
+  under_first_seed <- withr::with_seed(1, {
+    pmf <- grand_total_pmf(parse_notation("2d20h+2d20l")$terms)
+    percentile_below(pmf, 25L)
+  })
+  under_second_seed <- withr::with_seed(999, {
+    pmf <- grand_total_pmf(parse_notation("2d20h+2d20l")$terms)
+    percentile_below(pmf, 25L)
+  })
+
+  expect_equal(under_first_seed, 70)
+  expect_equal(under_second_seed, 70)
+})
+
+test_that("a wide multi-term comparison stays complete and finite (AC-7)", {
+  # 10d100+10d100 spans 1981 outcomes (200..2000); the block must cover every
+  # outcome plus the header and return without enumerating the joint dice
+  # space (convolution of per-term count vectors only).
+  withr::local_seed(1)
+  block <- comparison_block(roll("10d100+10d100", compare = TRUE))
+
+  expect_length(block, 1982L)
+})

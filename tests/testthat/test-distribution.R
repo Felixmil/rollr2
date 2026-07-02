@@ -162,3 +162,63 @@ test_that("percentile_below reports 0 at the minimum and mass-below at the maxim
   # Everything except the maximum (probability 1/36) is strictly below 12.
   expect_equal(percentile_below(pmf, 12L), round(100 * (1 - 1 / 36)))
 })
+
+# Multi-term notation ----
+
+test_that("a multi-term distribution sums, ranges, and reproduces (AC-4)", {
+  withr::local_seed(1)
+  dist <- roll_distribution("1d20+1d6", n = 1000)
+
+  expect_equal(sum(dist$counts), 1000L)
+  expect_equal(dist$range, c(2L, 26L))
+  outcomes <- as.integer(names(dist$counts))
+  expect_true(all(outcomes >= dist$range[1] & outcomes <= dist$range[2]))
+
+  first <- withr::with_seed(50, roll_distribution("1d20+1d6", n = 500))
+  second <- withr::with_seed(50, roll_distribution("1d20+1d6", n = 500))
+  expect_equal(first$counts, second$counts)
+})
+
+test_that("the sampled range agrees with the exact PMF endpoints (AC-6)", {
+  withr::local_seed(2)
+  dist <- roll_distribution("2d20h+2d20l", n = 1000)
+  pmf <- grand_total_pmf(parse_notation("2d20h+2d20l")$terms)
+  outcomes <- as.integer(names(pmf))
+
+  expect_equal(dist$range, c(min(outcomes), max(outcomes)))
+})
+
+test_that("a negated-term distribution can range below zero", {
+  withr::local_seed(4)
+  dist <- roll_distribution("2d20h-1d6", n = 1000)
+
+  expect_equal(dist$range, c(-5L, 19L))
+  expect_equal(sum(dist$counts), 1000L)
+})
+
+test_that("a constant term consumes no RNG in the sampler", {
+  # A leading constant shifts every total by its value without perturbing the
+  # dice draws, so the counts match the plain notation shifted by the constant.
+  with_const <- withr::with_seed(9, roll_distribution("3+2d6", n = 500))
+  plain <- withr::with_seed(9, roll_distribution("2d6", n = 500))
+
+  shifted <- plain$counts
+  names(shifted) <- as.integer(names(plain$counts)) + 3L
+  expect_equal(with_const$counts, shifted)
+})
+
+test_that("print.roll_distribution renders a multi-term notation", {
+  withr::local_seed(4)
+  expect_snapshot(print(roll_distribution("1d20+1d6", n = 100)))
+})
+
+test_that("grand_total_pmf reduces to outcome_pmf for a lone dice term", {
+  for (nt in c("2d6", "3d8-1", "4d6h3", "3d6l2", "1d4-10")) {
+    terms <- parse_notation(nt)$terms
+    sole <- terms[[1]]
+    expect_equal(
+      grand_total_pmf(terms),
+      outcome_pmf(sole$n, sole$x, sole$m, sole$keep, sole$keep_n)
+    )
+  }
+})
