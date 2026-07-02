@@ -28,7 +28,7 @@ Both `roll()` and `roll_distribution()` draw random numbers, so their output var
 `roll()` takes a single notation string and returns a `roll` object. Printing it shows the notation, the individual dice, and the adjusted total.
 
 ```{r}
-set.seed(1)
+set.seed(42)
 r <- roll("2d20+2")
 r
 ```
@@ -50,7 +50,7 @@ r$total
 When the notation carries a keep selector, `kept` is a subset of `dice` and the printout gains a `Kept:` line. Here `4d6h3` rolls four six-sided dice and keeps the highest three.
 
 ```{r}
-set.seed(1)
+set.seed(42)
 kept_roll <- roll("4d6h3")
 kept_roll
 
@@ -64,7 +64,7 @@ kept_roll$total
 A notation can be a sum of several terms joined by `+` or `-`, so you can add different dice and constants in one call. Each term is the grammar above (its own dice, optional keep selector, optional modifier), a `-` before a term subtracts its whole contribution, and a bare integer is a constant term. Keep selection applies within a term only; there is no keep across the whole expression.
 
 ```{r}
-set.seed(1)
+set.seed(42)
 mixed <- roll("1d20+1d6+3")
 mixed
 ```
@@ -80,7 +80,7 @@ mixed$terms[[2]]$subtotal
 A `-` before a term subtracts it, and a keep selector still applies within its own term, as in `2d20h+2d20l` (advantage plus disadvantage) or `2d20h-1d6`.
 
 ```{r}
-set.seed(1)
+set.seed(42)
 roll("2d20h+2d20l")
 ```
 
@@ -89,7 +89,7 @@ roll("2d20h+2d20l")
 `roll_distribution()` rolls the whole notation `n` times and summarises the distribution of totals. Its print method shows the possible total range, a count per observed outcome, and a text histogram.
 
 ```{r}
-set.seed(1)
+set.seed(42)
 roll_distribution("2d6", n = 1000)
 ```
 

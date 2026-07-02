@@ -1,5 +1,5 @@
 test_that("counts cover only outcomes in the possible range and sum to n", {
-  withr::local_seed(1)
+  withr::local_seed(42)
   dist <- roll_distribution("2d6", n = 1000)
 
   outcomes <- as.integer(names(dist$counts))
@@ -9,7 +9,7 @@ test_that("counts cover only outcomes in the possible range and sum to n", {
 })
 
 test_that("counts are ordered ascending by outcome value", {
-  withr::local_seed(2)
+  withr::local_seed(42)
   dist <- roll_distribution("3d8-1", n = 500)
 
   outcomes <- as.integer(names(dist$counts))
@@ -17,7 +17,7 @@ test_that("counts are ordered ascending by outcome value", {
 })
 
 test_that("a large die space and repetition count remain functional", {
-  withr::local_seed(3)
+  withr::local_seed(42)
   dist <- roll_distribution("10d100+5", n = 5000)
 
   expect_equal(sum(dist$counts), 5000L)
@@ -25,14 +25,14 @@ test_that("a large die space and repetition count remain functional", {
 })
 
 test_that("the distribution is reproducible under a fixed seed", {
-  first <- withr::with_seed(99, roll_distribution("2d6", n = 200))
-  second <- withr::with_seed(99, roll_distribution("2d6", n = 200))
+  first <- withr::with_seed(42, roll_distribution("2d6", n = 200))
+  second <- withr::with_seed(42, roll_distribution("2d6", n = 200))
 
   expect_equal(first$counts, second$counts)
 })
 
 test_that("a keep-highest selector narrows the range to the kept count", {
-  withr::local_seed(10)
+  withr::local_seed(42)
   dist <- roll_distribution("2d20h", n = 1000)
 
   expect_equal(dist$range, c(1L, 20L))
@@ -42,7 +42,7 @@ test_that("a keep-highest selector narrows the range to the kept count", {
 })
 
 test_that("an explicit keep count sets the range from the kept dice", {
-  withr::local_seed(11)
+  withr::local_seed(42)
   dist <- roll_distribution("4d6h3", n = 1000)
 
   expect_equal(dist$range, c(3L, 18L))
@@ -50,7 +50,7 @@ test_that("an explicit keep count sets the range from the kept dice", {
 })
 
 test_that("a selector on a single die keeps every simulated roll", {
-  withr::local_seed(13)
+  withr::local_seed(42)
   dist <- roll_distribution("d20h", n = 1000)
 
   expect_equal(dist$range, c(1L, 20L))
@@ -60,14 +60,14 @@ test_that("a selector on a single die keeps every simulated roll", {
 })
 
 test_that("keeping the one die of a single-die roll equals the plain die", {
-  with_selector <- withr::with_seed(14, roll_distribution("d20h", n = 1000))
-  plain <- withr::with_seed(14, roll_distribution("d20", n = 1000))
+  with_selector <- withr::with_seed(42, roll_distribution("d20h", n = 1000))
+  plain <- withr::with_seed(42, roll_distribution("d20", n = 1000))
 
   expect_equal(with_selector$counts, plain$counts)
 })
 
 test_that("a selector with a large die space bins over the kept range", {
-  withr::local_seed(12)
+  withr::local_seed(42)
   dist <- roll_distribution("10d100h5+5", n = 5000)
 
   expect_equal(dist$range, c(10L, 505L))
@@ -77,13 +77,13 @@ test_that("a selector with a large die space bins over the kept range", {
 })
 
 test_that("a selector distribution is reproducible under a fixed seed", {
-  first <- withr::with_seed(88, roll_distribution("4d6h3", n = 200))
-  second <- withr::with_seed(88, roll_distribution("4d6h3", n = 200))
+  first <- withr::with_seed(42, roll_distribution("4d6h3", n = 200))
+  second <- withr::with_seed(42, roll_distribution("4d6h3", n = 200))
   expect_equal(first$counts, second$counts)
 })
 
 test_that("print.roll_distribution renders counts and a histogram", {
-  withr::local_seed(4)
+  withr::local_seed(42)
   expect_snapshot(print(roll_distribution("2d6", n = 100)))
 })
 
@@ -166,7 +166,7 @@ test_that("percentile_below reports 0 at the minimum and mass-below at the maxim
 # Multi-term notation ----
 
 test_that("a multi-term distribution sums, ranges, and reproduces (AC-4)", {
-  withr::local_seed(1)
+  withr::local_seed(42)
   dist <- roll_distribution("1d20+1d6", n = 1000)
 
   expect_equal(sum(dist$counts), 1000L)
@@ -174,13 +174,13 @@ test_that("a multi-term distribution sums, ranges, and reproduces (AC-4)", {
   outcomes <- as.integer(names(dist$counts))
   expect_true(all(outcomes >= dist$range[1] & outcomes <= dist$range[2]))
 
-  first <- withr::with_seed(50, roll_distribution("1d20+1d6", n = 500))
-  second <- withr::with_seed(50, roll_distribution("1d20+1d6", n = 500))
+  first <- withr::with_seed(42, roll_distribution("1d20+1d6", n = 500))
+  second <- withr::with_seed(42, roll_distribution("1d20+1d6", n = 500))
   expect_equal(first$counts, second$counts)
 })
 
 test_that("the sampled range agrees with the exact PMF endpoints (AC-6)", {
-  withr::local_seed(2)
+  withr::local_seed(42)
   dist <- roll_distribution("2d20h+2d20l", n = 1000)
   pmf <- grand_total_pmf(parse_notation("2d20h+2d20l")$terms)
   outcomes <- as.integer(names(pmf))
@@ -189,7 +189,7 @@ test_that("the sampled range agrees with the exact PMF endpoints (AC-6)", {
 })
 
 test_that("a negated-term distribution can range below zero", {
-  withr::local_seed(4)
+  withr::local_seed(42)
   dist <- roll_distribution("2d20h-1d6", n = 1000)
 
   expect_equal(dist$range, c(-5L, 19L))
@@ -199,8 +199,8 @@ test_that("a negated-term distribution can range below zero", {
 test_that("a constant term consumes no RNG in the sampler", {
   # A leading constant shifts every total by its value without perturbing the
   # dice draws, so the counts match the plain notation shifted by the constant.
-  with_const <- withr::with_seed(9, roll_distribution("3+2d6", n = 500))
-  plain <- withr::with_seed(9, roll_distribution("2d6", n = 500))
+  with_const <- withr::with_seed(42, roll_distribution("3+2d6", n = 500))
+  plain <- withr::with_seed(42, roll_distribution("2d6", n = 500))
 
   shifted <- plain$counts
   names(shifted) <- as.integer(names(plain$counts)) + 3L
@@ -208,7 +208,7 @@ test_that("a constant term consumes no RNG in the sampler", {
 })
 
 test_that("print.roll_distribution renders a multi-term notation", {
-  withr::local_seed(4)
+  withr::local_seed(42)
   expect_snapshot(print(roll_distribution("1d20+1d6", n = 100)))
 })
 
