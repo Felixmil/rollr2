@@ -365,6 +365,33 @@ async function findLinkedPr(issue) {
   return typeof out?.prNumber === "number" ? out.prNumber : null;
 }
 
+// Batched QA read: verify qa.md exists and read its verdict in ONE spawn
+// (both only read qa.md), instead of a check-artifact spawn plus a
+// read-qa-verdict spawn. Returns { present, verdict }.
+async function verifyQaAndReadVerdict(dir) {
+  const out = await agent(
+    cacheBust(
+      `Run under bash: if [ ! -s ${dir}/qa.md ]; then echo MISSING; else grep -o 'QA-VERDICT: [a-z]*' ${dir}/qa.md | tail -1; fi. ` +
+        `If stdout is "MISSING", set present=false. Otherwise set present=true and verdict="approved" if the ` +
+        `printed line ends in approved, else "rejected".`,
+    ),
+    {
+      label: "verify-qa-verdict",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["present"],
+        properties: {
+          present: { type: "boolean" },
+          verdict: { type: "string", enum: ["approved", "rejected"] },
+        },
+      },
+    },
+  );
+  return { present: Boolean(out?.present), verdict: out?.verdict === "approved" ? "approved" : "rejected" };
+}
+
 // Read the last QA-VERDICT: line out of qa.md itself (never trust the
 // agent's summary of its own verdict). Returns "approved" | "rejected".
 async function readQaVerdict(dir) {
@@ -387,25 +414,62 @@ async function readQaVerdict(dir) {
   return out?.verdict === "approved" ? "approved" : "rejected";
 }
 
-// Confirm an artifact was actually written and is non-empty (never trust
-// the agent's "I wrote the file").
-async function artifactExists(dir, filename) {
+// Batched post-phase bookkeeping: verify the artifact exists, run the ONE
+// validated transition, and read the new state back, all in a SINGLE agent
+// spawn instead of three. Each subagent spawn pays a large fixed context
+// cost (~19k tokens) regardless of the trivial shell work it does, so
+// collapsing check-artifact + transition + read-state from three spawns to
+// one is the biggest available saving on bookkeeping overhead.
+//
+// It preserves every guarantee the three separate calls gave:
+//  - the artifact-existence check (test -s) still gates advancement;
+//  - the status move still goes ONLY through issue-state-transition.sh, and
+//    its exit code is still checked (a non-zero exit -> ok:false -> the
+//    caller throws), so an illegal transition still fails loudly and the
+//    validated table remains the single mutator;
+//  - the returned state is a fresh read of the file after the transition.
+// The commands are &&-chained so a failed artifact check or a failed
+// transition never proceeds to the read; the agent reports which step
+// failed. Cache-busted like every other mutable-state read.
+async function verifyAndAdvance(dir, root, issue, artifact, toStatus) {
   const out = await agent(
     cacheBust(
-      `Run: test -s ${dir}/${filename} && echo yes || echo no. Set present to true only if stdout is "yes".`,
+      `Run these commands in order under bash and report the result. Do not invent or substitute any command.\n\n` +
+        `1. test -s ${dir}/${artifact} || { echo "MISSING_ARTIFACT" >&2; exit 3; }\n` +
+        `2. bash ${TRANSITION} ${root} ${issue} ${toStatus}\n` +
+        `3. cat ${dir}/state.json\n\n` +
+        `Set artifactPresent=false and ok=false with error="artifact missing" if step 1 failed (exit 3). ` +
+        `Set ok=false and put the transition's stderr in error if step 2 exited non-zero. Only if steps 1 and 2 ` +
+        `both succeeded, set ok=true, artifactPresent=true, and state to the JSON object step 3 printed.`,
     ),
     {
-      label: "check-artifact",
+      label: "verify-advance",
       model: "haiku",
       schema: {
         type: "object",
         additionalProperties: false,
-        required: ["present"],
-        properties: { present: { type: "boolean" } },
+        required: ["ok", "artifactPresent"],
+        properties: {
+          ok: { type: "boolean" },
+          artifactPresent: { type: "boolean" },
+          error: { type: "string" },
+          state: { type: ["object", "null"], additionalProperties: true },
+        },
       },
     },
   );
-  return Boolean(out?.present);
+  if (!out?.artifactPresent) {
+    throw new Error(`Phase artifact ${dir}/${artifact} is missing or empty after the agent returned done.`);
+  }
+  if (!out?.ok) {
+    throw new Error(`Transition ${issue} -> ${toStatus} failed: ${out?.error ?? "unknown error"}`);
+  }
+  bumpState();
+  const state = out.state ?? null;
+  if (!state || typeof state.status !== "string" || typeof state.mode !== "string") {
+    throw new Error(`state.json read back after advancing to ${toStatus} is missing required keys (status/mode).`);
+  }
+  return state;
 }
 
 // Resolve the read-only dependency artifact paths for this issue. Returns
@@ -715,12 +779,13 @@ if (state.pendingQuestion) {
     }
     if (def.key === "qa") {
       // QA has its own gate / rejection-loop / verdict-transition, not the
-      // generic advance. Verify, read the verdict, and hand off to the
-      // shared QA driver (which also handles manual mode's gate).
-      if (!(await artifactExists(dir, "qa.md"))) {
+      // generic advance. Verify the artifact and read the verdict in one
+      // spawn, then hand off to the shared QA driver (which also handles
+      // manual mode's gate).
+      const { present, verdict } = await verifyQaAndReadVerdict(dir);
+      if (!present) {
         throw new Error(`QA returned done but ${dir}/qa.md is missing or empty.`);
       }
-      const verdict = await readQaVerdict(dir);
       await patchState(dir, { qaVerdict: verdict });
       const driven = await driveQaFromVerdict(verdict);
       if (driven.stopped) {
@@ -732,7 +797,8 @@ if (state.pendingQuestion) {
         return advanced.value;
       }
     }
-    state = await readState(dir);
+    // The phase loop below re-reads state fresh (line "Re-read fresh …")
+    // before iterating, so no separate read-state spawn is needed here.
   } else if (pq.kind === "gate") {
     // Manual-mode approve/revise on a written artifact.
     if (parsed.directive?.kind === "revise") {
@@ -779,34 +845,32 @@ if (state.pendingQuestion) {
 // Given a def whose agent just returned "done", verify the artifact,
 // apply the manual gate if any, otherwise transition to the next status.
 // Returns { stopped: true, value } if it stopped for a human, or
-// { stopped: false } to continue the loop.
+// { stopped: false, state } to continue the loop (state is the fresh
+// post-transition read, so the caller does not need its own read-state
+// spawn). Only spec/plan/build reach here; QA advances via
+// driveQaFromVerdict.
 async function advancePhaseAfterAgent(def) {
-  if (!(await artifactExists(dir, def.artifact))) {
-    throw new Error(`Phase ${def.key} returned done but ${dir}/${def.artifact} is missing or empty.`);
-  }
-
+  // Build records its linked PR before advancing. This is its own read
+  // (of GitHub, not local state) and cannot fold into the local batch.
   if (def.key === "build") {
     const pr = await findLinkedPr(issue);
     if (pr) {
       await patchState(dir, { prNumber: pr });
     }
   }
-  if (def.key === "qa") {
-    await patchState(dir, { qaVerdict: await readQaVerdict(dir) });
-  }
 
   if (mode === "manual") {
-    await transitionTo(root, issue, def.gateStatus);
-    return { stopped: true, value: await stopForGate(dir, issue, def.key, def.gateStatus) };
+    // Manual gate: verify the artifact and move to the gate status in one
+    // batched call, then stop for the human.
+    const gated = await verifyAndAdvance(dir, root, issue, def.artifact, def.gateStatus);
+    return { stopped: true, value: await stopForGate(dir, issue, def.key, def.gateStatus), state: gated };
   }
 
-  // auto / semi-auto: advance immediately.
-  if (def.key === "qa") {
-    // QA never advances through here; use driveQaFromVerdict instead.
-    return { stopped: false };
-  }
-  await transitionTo(root, issue, def.toStatus);
-  return { stopped: false };
+  // auto / semi-auto: verify the artifact, run the real transition, and read
+  // the fresh state, all in ONE spawn (was three: check-artifact +
+  // transition + read-state).
+  const state = await verifyAndAdvance(dir, root, issue, def.artifact, def.toStatus);
+  return { stopped: false, state };
 }
 
 // Post-QA handling shared by the phase loop and the resume branch. Given
@@ -885,10 +949,11 @@ for (const def of PHASE_DEFS) {
     if (result.status === "clarification-needed") {
       return await stopForQuestion(dir, issue, "qa", result);
     }
-    if (!(await artifactExists(dir, def.artifact))) {
+    // Verify qa.md and read its verdict in one spawn.
+    const { present, verdict } = await verifyQaAndReadVerdict(dir);
+    if (!present) {
       throw new Error(`QA returned done but ${dir}/qa.md is missing or empty.`);
     }
-    const verdict = await readQaVerdict(dir);
     await patchState(dir, { qaVerdict: verdict });
     const driven = await driveQaFromVerdict(verdict);
     if (driven.stopped) {
@@ -912,7 +977,9 @@ for (const def of PHASE_DEFS) {
   if (advanced.stopped) {
     return advanced.value;
   }
-  state = await readState(dir);
+  // advancePhaseAfterAgent already read the fresh post-transition state as
+  // part of its batched call; reuse it instead of a separate read-state spawn.
+  state = advanced.state;
 }
 
 log(`Issue ${issue} is at ${state.status}; nothing left for this workflow to drive.`);
