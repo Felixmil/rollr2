@@ -1,17 +1,22 @@
 #' Roll dice from notation once
 #'
-#' Parses a dice-notation string and simulates a single roll: `N` independent
-#' uniform draws from `1..X`, summed and adjusted by the modifier `M`. When
-#' the notation carries a keep selector (`h`/`l`), only the highest or lowest
-#' `K` of the rolled dice contribute to the total; the modifier is still
-#' applied once to that kept sum.
+#' Parses a dice-notation string and simulates a single roll. A notation may
+#' be a sum of several terms joined by `+`/`-` (for example `1d20+1d6+3`); each
+#' dice term draws `N` independent uniform values from `1..X`, keeps the
+#' highest/lowest `K` when it carries a selector, and contributes its kept sum
+#' plus its own modifier `M`. A `-` before a term subtracts that term's whole
+#' contribution. Bare integer terms (constants) are added directly. The grand
+#' `total` is the sum of every term's signed contribution.
 #'
-#' @param notation A length-1 character string in the form `NdX`, `NdX+M`,
-#'   `NdX-M`, or the count-omitted `dX` variants (case-insensitive `d`,
-#'   whitespace-tolerant). An optional keep selector `h`/`l` with an optional
-#'   count may follow the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`); it keeps
-#'   the highest (`h`) or lowest (`l`) `K` dice, defaulting to `K = 1`. See
-#'   [roll_distribution()] to summarise many rolls.
+#' @param notation A length-1 character string. A single dice term is `NdX`,
+#'   `NdX+M`, `NdX-M`, or the count-omitted `dX` variants (case-insensitive
+#'   `d`, whitespace-tolerant), optionally with a keep selector `h`/`l` and an
+#'   optional count after the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`), which
+#'   keeps the highest (`h`) or lowest (`l`) `K` dice (defaulting to `K = 1`).
+#'   Several such terms, plus bare integer constants, may be joined with `+` or
+#'   `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`);
+#'   at least one dice term is required and each keep selector applies within
+#'   its own term only. See [roll_distribution()] to summarise many rolls.
 #' @param compare A length-1 logical. When `TRUE`, printing the roll also
 #'   shows where the total sits within the notation's full theoretical outcome
 #'   distribution: a header line stating what percent of outcomes the roll
@@ -20,55 +25,71 @@
 #'   roll itself. The comparison is computed, not sampled, so a given
 #'   (notation, total) pair always reports the same standing.
 #'
-#' @return A `roll` object: a list with `dice` (integer vector of length `N`,
-#'   each in `1..X`, listing every die rolled), `total` (integer scalar equal
-#'   to the sum of the kept dice plus `M`), `kept` (the kept dice, equal to
-#'   `dice` when there is no selector), the parsed components `n`, `x`, `m`,
-#'   `keep`, `keep_n`, the original `notation`, and `compare` (the logical
-#'   flag from the argument, controlling the print method).
+#' @return A `roll` object: a list with `dice` (integer vector listing every
+#'   die rolled, the concatenation of all dice terms in term order), `total`
+#'   (integer scalar grand total: the sum of each term's signed contribution),
+#'   `kept` (the dice that contribute, the concatenation of each term's kept
+#'   dice in term order), `terms` (the per-term breakdown, each element a list
+#'   with the term's parsed fields plus its `dice`, `kept`, and `subtotal`),
+#'   the original `notation`, and `compare` (the logical flag controlling the
+#'   print method). For a single-term notation the parsed components `n`, `x`,
+#'   `m`, `keep`, `keep_n` are also present at the top level; they are omitted
+#'   for a multi-term notation, where per-term access via `terms` is required.
 #'
 #' @examples
 #' set.seed(1)
 #' roll("2d20+2")
 #' roll("d6")
 #' roll("4d6h3")
+#' roll("1d20+1d6+3")
 #' roll("2d6", compare = TRUE)
 #'
 #' @export
 roll <- function(notation, compare = FALSE) {
-  components <- parse_notation(notation)
+  parsed <- parse_notation(notation)
   compare <- validate_compare(compare)
 
-  dice <- sample.int(components$x, size = components$n, replace = TRUE)
+  # Roll each term left-to-right in term order so that, under a fixed seed,
+  # the RNG stream is well-defined and reproducible. Constant terms consume no
+  # RNG, keeping the stream identical to a dice-only notation up to that point.
+  terms <- lapply(parsed$terms, roll_term)
 
-  # A keep selector reduces the summed dice to the highest/lowest `keep_n`.
-  # Selection is value-based (sort on values), so equal dice are
-  # interchangeable and no tie-break is needed. Absent a selector every die
-  # is kept, reproducing the plain sum.
-  if (!is.na(components$keep)) {
-    sorted <- sort(dice, decreasing = components$keep == "h")
-    kept <- sorted[seq_len(components$keep_n)]
-  } else {
-    kept <- dice
+  total <- sum(vapply(terms, \(term) term$subtotal, integer(1L)))
+
+  # Flat top-level fields (FR-5): `dice` is every die rolled and `kept` is the
+  # contributing dice, both concatenated across dice terms in term order.
+  # Constant terms have no dice, so they contribute nothing here.
+  dice <- unlist(lapply(terms, \(term) term$dice), use.names = FALSE)
+  kept <- unlist(lapply(terms, \(term) term$kept), use.names = FALSE)
+  if (is.null(dice)) {
+    dice <- integer(0)
+  }
+  if (is.null(kept)) {
+    kept <- integer(0)
   }
 
-  total <- sum(kept) + components$m
-
-  structure(
-    list(
-      dice = dice,
-      total = total,
-      kept = kept,
-      n = components$n,
-      x = components$x,
-      m = components$m,
-      keep = components$keep,
-      keep_n = components$keep_n,
-      notation = notation,
-      compare = compare
-    ),
-    class = "roll"
+  obj <- list(
+    dice = dice,
+    total = total,
+    kept = kept,
+    terms = terms,
+    notation = notation,
+    compare = compare
   )
+
+  # For a single-term notation, expose the parsed components at the top level
+  # (unchanged from the pre-multi-term object) so existing accessors keep
+  # working. They are not meaningful for a multi-term notation and are omitted.
+  if (length(parsed$terms) == 1L && parsed$terms[[1L]]$kind == "dice") {
+    sole <- parsed$terms[[1L]]
+    obj$n <- sole$n
+    obj$x <- sole$x
+    obj$m <- sole$m
+    obj$keep <- sole$keep
+    obj$keep_n <- sole$keep_n
+  }
+
+  structure(obj, class = "roll")
 }
 
 #' @param x A `roll` object, as returned by `roll()`.
@@ -78,10 +99,22 @@ roll <- function(notation, compare = FALSE) {
 #' @export
 print.roll <- function(x, ...) {
   cat("<roll> ", x$notation, "\n", sep = "")
-  cat("Dice:  ", paste(x$dice, collapse = ", "), "\n", sep = "")
-  if (!is.na(x$keep)) {
-    cat("Kept:  ", paste(x$kept, collapse = ", "), "\n", sep = "")
+
+  # One `Dice:` line per dice term (and a `Kept:` line for any selector term),
+  # in term order, then a single grand `Total:`. Constant terms have no dice
+  # and are not listed; they are visible in the notation header and folded into
+  # the total. For a single-term notation this reproduces the original
+  # three/four-line layout exactly.
+  for (term in x$terms) {
+    if (term$kind != "dice") {
+      next
+    }
+    cat("Dice:  ", paste(term$dice, collapse = ", "), "\n", sep = "")
+    if (!is.na(term$keep)) {
+      cat("Kept:  ", paste(term$kept, collapse = ", "), "\n", sep = "")
+    }
   }
+
   cat("Total: ", x$total, "\n", sep = "")
 
   if (isTRUE(x$compare)) {
@@ -105,8 +138,10 @@ print.roll <- function(x, ...) {
 #' @export
 plot.roll <- function(x, ...) {
   # Same exact-PMF source the print path uses (comparison_block()), so the
-  # plotted standing matches the printed one byte for byte. Consumes no RNG.
-  pmf <- outcome_pmf(x$n, x$x, x$m, x$keep, x$keep_n)
+  # plotted standing matches the printed one byte for byte. Built from the
+  # per-term structure so it works for both single- and multi-term rolls (the
+  # flat `$n/$x/...` fields are omitted for multi-term). Consumes no RNG.
+  pmf <- grand_total_pmf(x$terms)
   percentile <- percentile_below(pmf, x$total)
 
   totals <- as.integer(names(pmf))
@@ -140,6 +175,47 @@ plot.roll <- function(x, ...) {
 
 # Internal helpers ----
 
+# Roll one parsed term into a per-term record carrying its `dice`, `kept`, and
+# signed `subtotal`, alongside the parsed fields. A constant term draws no dice
+# (empty `dice`/`kept`) and contributes its `value`; a dice term draws `n`
+# uniform faces, applies its keep selector value-based (no tie-break), and
+# contributes `sign * (sum(kept) + m)`.
+roll_term <- function(term) {
+  if (term$kind == "const") {
+    return(list(
+      kind = "const",
+      value = term$value,
+      dice = integer(0),
+      kept = integer(0),
+      subtotal = term$value
+    ))
+  }
+
+  dice <- sample.int(term$x, size = term$n, replace = TRUE)
+
+  if (!is.na(term$keep)) {
+    sorted <- sort(dice, decreasing = term$keep == "h")
+    kept <- sorted[seq_len(term$keep_n)]
+  } else {
+    kept <- dice
+  }
+
+  subtotal <- term$sign * (sum(kept) + term$m)
+
+  list(
+    kind = "dice",
+    sign = term$sign,
+    n = term$n,
+    x = term$x,
+    m = term$m,
+    keep = term$keep,
+    keep_n = term$keep_n,
+    dice = dice,
+    kept = kept,
+    subtotal = subtotal
+  )
+}
+
 # Reject a comparison flag that is not a single non-missing logical. Returns
 # the value unchanged on success.
 validate_compare <- function(compare) {
@@ -167,11 +243,11 @@ validate_compare <- function(compare) {
 # Build the comparison block for a roll: a header naming the notation and the
 # percentile standing, then the outcome-distribution histogram with the
 # rolled total's bar marked. The percentile and histogram are derived here
-# from the roll's stored components (never persisted on the object) so the
+# from the roll's per-term structure (never persisted on the object) so the
 # standing is a pure function of the notation and total. Returns a character
 # vector, one line per element, for `cat(sep = "\n")`.
 comparison_block <- function(x) {
-  pmf <- outcome_pmf(x$n, x$x, x$m, x$keep, x$keep_n)
+  pmf <- grand_total_pmf(x$terms)
   percentile <- percentile_below(pmf, x$total)
 
   # Scale probabilities to a non-negative integer vector so the existing

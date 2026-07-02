@@ -1,84 +1,46 @@
+# The parser returns an ordered list of term records under `$terms`; each
+# record has several fields, so the structural assertions below use
+# `expect_snapshot()` rather than a bundle of `expect_equal()` calls.
+
 test_that("parse_notation extracts components from a full NdX+M form", {
-  expect_equal(
-    parse_notation("2d20+2"),
-    list(n = 2L, x = 20L, m = 2L, keep = NA_character_, keep_n = NA_integer_)
-  )
+  expect_snapshot(parse_notation("2d20+2"))
 })
 
 test_that("parse_notation defaults a missing modifier to zero", {
-  expect_equal(
-    parse_notation("4d6"),
-    list(n = 4L, x = 6L, m = 0L, keep = NA_character_, keep_n = NA_integer_)
-  )
+  expect_snapshot(parse_notation("4d6"))
 })
 
 test_that("parse_notation handles a negative modifier", {
-  expect_equal(
-    parse_notation("1d8-1"),
-    list(n = 1L, x = 8L, m = -1L, keep = NA_character_, keep_n = NA_integer_)
-  )
+  expect_snapshot(parse_notation("1d8-1"))
 })
 
 test_that("parse_notation defaults a missing count to one", {
-  expect_equal(
-    parse_notation("d20"),
-    list(n = 1L, x = 20L, m = 0L, keep = NA_character_, keep_n = NA_integer_)
-  )
+  expect_snapshot(parse_notation("d20"))
 })
 
 test_that("parse_notation is case-insensitive and whitespace-tolerant", {
-  expect_equal(
-    parse_notation("2D20 + 2"),
-    list(n = 2L, x = 20L, m = 2L, keep = NA_character_, keep_n = NA_integer_)
-  )
-  expect_equal(
-    parse_notation(" 2d20 + 2 "),
-    list(n = 2L, x = 20L, m = 2L, keep = NA_character_, keep_n = NA_integer_)
-  )
+  expect_snapshot(parse_notation("2D20 + 2"))
+  expect_snapshot(parse_notation(" 2d20 + 2 "))
 })
 
 test_that("parse_notation reads keep-highest and keep-lowest selectors", {
-  expect_equal(
-    parse_notation("2d20h"),
-    list(n = 2L, x = 20L, m = 0L, keep = "h", keep_n = 1L)
-  )
-  expect_equal(
-    parse_notation("2d20l"),
-    list(n = 2L, x = 20L, m = 0L, keep = "l", keep_n = 1L)
-  )
-  expect_equal(
-    parse_notation("4d6h3"),
-    list(n = 4L, x = 6L, m = 0L, keep = "h", keep_n = 3L)
-  )
-  expect_equal(
-    parse_notation("3d6l2"),
-    list(n = 3L, x = 6L, m = 0L, keep = "l", keep_n = 2L)
-  )
+  expect_snapshot(parse_notation("2d20h"))
+  expect_snapshot(parse_notation("2d20l"))
+  expect_snapshot(parse_notation("4d6h3"))
+  expect_snapshot(parse_notation("3d6l2"))
 })
 
 test_that("a count-omitted die with a selector keeps the single die", {
-  expect_equal(
-    parse_notation("d20h"),
-    list(n = 1L, x = 20L, m = 0L, keep = "h", keep_n = 1L)
-  )
+  expect_snapshot(parse_notation("d20h"))
 })
 
 test_that("selectors are case-insensitive and compose with a modifier", {
-  expect_equal(
-    parse_notation("2D20H"),
-    list(n = 2L, x = 20L, m = 0L, keep = "h", keep_n = 1L)
-  )
-  expect_equal(
-    parse_notation("4d6h3 + 2"),
-    list(n = 4L, x = 6L, m = 2L, keep = "h", keep_n = 3L)
-  )
+  expect_snapshot(parse_notation("2D20H"))
+  expect_snapshot(parse_notation("4d6h3 + 2"))
 })
 
 test_that("a keep count equal to the die count is valid and keeps all", {
-  expect_equal(
-    parse_notation("3d6h3"),
-    list(n = 3L, x = 6L, m = 0L, keep = "h", keep_n = 3L)
-  )
+  expect_snapshot(parse_notation("3d6h3"))
 })
 
 test_that("an invalid keep count is rejected", {
@@ -116,4 +78,55 @@ test_that("a die count below one is rejected", {
 test_that("a degenerate or invalid die size is rejected", {
   expect_snapshot(error = TRUE, parse_notation("1d1"))
   expect_snapshot(error = TRUE, parse_notation("d0"))
+})
+
+# Multi-term notation ----
+
+test_that("parse_notation reads a sum of dice terms plus a constant (AC-1)", {
+  expect_snapshot(parse_notation("2d20h+1d6+1"))
+  expect_snapshot(parse_notation("2d20h+2d20l"))
+  expect_snapshot(parse_notation("1d20+1d6+1d4+3"))
+})
+
+test_that("a leading `+M`/`-M` binds as the term modifier under the locked rule", {
+  # A bare `+M`/`-M` right after a dice term with no modifier is that term's
+  # within-term modifier, not a separate constant; a further signed integer
+  # then becomes a standalone constant term.
+  expect_snapshot(parse_notation("2d20+2")) # one term, m = 2
+  expect_snapshot(parse_notation("1d6+3")) # one term, m = 3
+  expect_snapshot(parse_notation("2d6+2+1d4")) # modified dice term + dice term
+  expect_snapshot(parse_notation("1d6+3+1")) # dice term (m = 3) + constant
+})
+
+test_that("a negated dice term captures a -1 sign", {
+  expect_snapshot(parse_notation("2d20h-1d6"))
+})
+
+test_that("a leading bare constant is accepted since terms commute", {
+  expect_snapshot(parse_notation("3+1d20"))
+})
+
+test_that("whitespace-separated terms and signs parse", {
+  expect_snapshot(parse_notation("1d20 + 1d6 - 2"))
+})
+
+test_that("a repeated identical term is not merged at the object level", {
+  # 1d6+1d6 keeps two distinct term records rather than collapsing to 2d6.
+  expect_snapshot(parse_notation("1d6+1d6"))
+})
+
+test_that("a per-term validation error names the offending term", {
+  # The `of "<notation>"` clause appears only for a multi-term notation; a
+  # single-term error keeps the pre-multi-term wording.
+  expect_snapshot(error = TRUE, parse_notation("2d6h5+1d4"))
+  expect_snapshot(error = TRUE, parse_notation("0d6+1d4"))
+})
+
+test_that("malformed joins and pure-constant notation are rejected", {
+  expect_snapshot(error = TRUE, parse_notation("1d6++1d6"))
+  expect_snapshot(error = TRUE, parse_notation("1d6+"))
+  expect_snapshot(error = TRUE, parse_notation("+"))
+  expect_snapshot(error = TRUE, parse_notation("3"))
+  expect_snapshot(error = TRUE, parse_notation("1+2"))
+  expect_snapshot(error = TRUE, parse_notation("1d6 1d6"))
 })

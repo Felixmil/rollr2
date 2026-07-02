@@ -52,6 +52,13 @@ set.seed(1)
 roll("4d6h3")
 ```
 
+A notation can also sum several terms and constants, joined with `+` or `-`.
+
+```{r}
+set.seed(1)
+roll("1d20+1d6+3")
+```
+
 ## Summarise a distribution
 
 `roll_distribution()` rolls the whole notation many times and summarises the distribution of totals, printing a count per outcome and a text histogram.

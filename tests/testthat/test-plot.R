@@ -94,6 +94,43 @@ test_that("plot.roll handles a negative, shifted range", {
   expect_equal(range(ggplot2::layer_data(p)$x), c(-9, -6))
 })
 
+test_that("plot.roll works on a multi-term notation", {
+  # Multi-term rolls omit the flat `$n/$x/$m/$keep/$keep_n` fields, so the plot
+  # must source its PMF from the per-term structure (`grand_total_pmf()`), the
+  # same source the compare print path uses.
+  r <- withr::with_seed(4, roll("1d20+1d6+3"))
+  p <- plot(r)
+
+  expect_s3_class(p, "ggplot")
+
+  # 1d20+1d6+3 ranges from 5 (1+1+3) to 29 (20+6+3).
+  expect_equal(range(ggplot2::layer_data(p)$x), c(5, 29))
+  expect_equal(p$labels$title, "Outcome distribution for 1d20+1d6+3")
+
+  # The plotted standing matches the compare/print path exactly (Goal 3: the
+  # entry points stay in lockstep).
+  expected_percentile <- percentile_below(grand_total_pmf(r$terms), r$total)
+  expect_match(
+    p$labels$subtitle,
+    paste0("beats ", expected_percentile, "% of outcomes"),
+    fixed = TRUE
+  )
+
+  # Exactly the rolled total's bar carries the highlight fill.
+  ld <- ggplot2::layer_data(p)
+  expect_equal(ld$x[ld$fill == "firebrick"], as.numeric(r$total))
+})
+
+test_that("plot.roll handles a negated multi-term notation", {
+  # 2d20h-2d20l can go negative (largest single d20 minus smallest single d20),
+  # ranging from -19 (1-20) to 19 (20-1). Exercises the negated-term PMF path.
+  r <- withr::with_seed(8, roll("2d20h-2d20l"))
+  p <- plot(r)
+
+  expect_s3_class(p, "ggplot")
+  expect_equal(range(ggplot2::layer_data(p)$x), c(-19, 19))
+})
+
 test_that("plot.roll reports 0% standing when the total is the minimum", {
   # Force the minimum roll on 1d4 (all faces equally likely; seed chosen so the
   # total is the range minimum, verified below).
