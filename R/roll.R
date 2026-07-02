@@ -13,6 +13,12 @@
 #'   `d`, whitespace-tolerant), optionally with a keep selector `h`/`l` and an
 #'   optional count after the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`), which
 #'   keeps the highest (`h`) or lowest (`l`) `K` dice (defaulting to `K = 1`).
+#'   An explode marker may follow the die size, before any keep selector or
+#'   modifier: `!` rerolls a maximum-face die exactly once and sums the two
+#'   faces (the extra die does not itself explode), while `!!` keeps rerolling
+#'   while the maximum recurs, capped at 100 chained rerolls per die. So `2d6!`,
+#'   `2d6!!`, `4d6!h3`, and `2d6!+1` are all valid. When a `!!` die reaches the
+#'   cap, `roll()` emits a warning while still returning a valid roll.
 #'   Several such terms, plus bare integer constants, may be joined with `+` or
 #'   `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`);
 #'   at least one dice term is required and each keep selector applies within
@@ -33,8 +39,10 @@
 #'   with the term's parsed fields plus its `dice`, `kept`, and `subtotal`),
 #'   the original `notation`, and `compare` (the logical flag controlling the
 #'   print method). For a single-term notation the parsed components `n`, `x`,
-#'   `m`, `keep`, `keep_n` are also present at the top level; they are omitted
-#'   for a multi-term notation, where per-term access via `terms` is required.
+#'   `m`, `keep`, `keep_n`, `explode` are also present at the top level; they
+#'   are omitted for a multi-term notation, where per-term access via `terms`
+#'   is required. For an exploding term `dice` still lists every physical die
+#'   including rerolls in draw order, and `kept` lists the kept per-die totals.
 #'
 #' @examples
 #' set.seed(1)
@@ -53,6 +61,19 @@ roll <- function(notation, compare = FALSE) {
   # the RNG stream is well-defined and reproducible. Constant terms consume no
   # RNG, keeping the stream identical to a dice-only notation up to that point.
   terms <- lapply(parsed$terms, roll_term)
+
+  # A `!!` die that hit the reroll cap surfaces a single warning per roll (not
+  # per die), making the truncation visible; the roll object is still returned.
+  if (any(vapply(terms, \(term) isTRUE(term$capped), logical(1L)))) {
+    warn(
+      paste0(
+        "An exploding die reached the reroll cap of ",
+        explode_cap,
+        " and its chain was truncated."
+      ),
+      class = c("rollr2_warning_explode_cap", "rollr2_warning")
+    )
+  }
 
   total <- sum(vapply(terms, \(term) term$subtotal, integer(1L)))
 
@@ -87,6 +108,7 @@ roll <- function(notation, compare = FALSE) {
     obj$m <- sole$m
     obj$keep <- sole$keep
     obj$keep_n <- sole$keep_n
+    obj$explode <- sole$explode
   }
 
   structure(obj, class = "roll")
@@ -173,13 +195,22 @@ plot.roll <- function(x, ...) {
     theme_minimal()
 }
 
+# Internal constants ----
+
+# Maximum chained rerolls for an explode-indefinitely (`!!`) die. A safety
+# backstop, not a tuning knob: shared by the sampler (`roll()`,
+# `roll_distribution()`) and the exact-PMF truncation so they cannot drift.
+explode_cap <- 100L
+
 # Internal helpers ----
 
-# Roll one parsed term into a per-term record carrying its `dice`, `kept`, and
-# signed `subtotal`, alongside the parsed fields. A constant term draws no dice
-# (empty `dice`/`kept`) and contributes its `value`; a dice term draws `n`
-# uniform faces, applies its keep selector value-based (no tie-break), and
-# contributes `sign * (sum(kept) + m)`.
+# Roll one parsed term into a per-term record carrying its `dice`, `kept`,
+# signed `subtotal`, and a `capped` flag, alongside the parsed fields. A
+# constant term draws no dice (empty `dice`/`kept`) and contributes its
+# `value`. A dice term draws `n` faces (per-die exploded when a marker is
+# present), applies its keep selector value-based (no tie-break) to the per-die
+# totals, and contributes `sign * (sum(kept) + m)`. `capped` is TRUE only when
+# some `!!` die in the term hit the reroll cap.
 roll_term <- function(term) {
   if (term$kind == "const") {
     return(list(
@@ -191,13 +222,29 @@ roll_term <- function(term) {
     ))
   }
 
-  dice <- sample.int(term$x, size = term$n, replace = TRUE)
+  capped <- FALSE
+  if (term$explode == "none") {
+    # Marker-free: draw the whole term in one batched call so the RNG stream is
+    # byte-identical to the pre-explode behaviour (no per-die routing).
+    dice <- sample.int(term$x, size = term$n, replace = TRUE)
+    per_die_totals <- dice
+  } else {
+    # Exploding: draw each die independently, left to right, initial then
+    # rerolls. `dice` concatenates every physical face in draw order; the
+    # per-die totals feed the keep selector.
+    per_die <- lapply(seq_len(term$n), function(i) {
+      explode_die(term$x, term$explode)
+    })
+    dice <- unlist(lapply(per_die, \(d) d$faces), use.names = FALSE)
+    per_die_totals <- vapply(per_die, \(d) d$total, integer(1L))
+    capped <- any(vapply(per_die, \(d) d$capped, logical(1L)))
+  }
 
   if (!is.na(term$keep)) {
-    sorted <- sort(dice, decreasing = term$keep == "h")
+    sorted <- sort(per_die_totals, decreasing = term$keep == "h")
     kept <- sorted[seq_len(term$keep_n)]
   } else {
-    kept <- dice
+    kept <- per_die_totals
   }
 
   subtotal <- term$sign * (sum(kept) + term$m)
@@ -210,10 +257,54 @@ roll_term <- function(term) {
     m = term$m,
     keep = term$keep,
     keep_n = term$keep_n,
+    explode = term$explode,
     dice = dice,
     kept = kept,
-    subtotal = subtotal
+    subtotal = subtotal,
+    capped = capped
   )
+}
+
+# Draw one logical die of size `x` under explode mode `explode` ("none",
+# "once", "indef"). Returns a list with `faces` (the physical faces drawn, in
+# draw order, including any rerolls), `total` (their sum, the die's
+# contribution), and `capped` (TRUE only when an `"indef"` chain was
+# force-stopped at `explode_cap` rerolls with the final reroll still showing
+# the maximum face). `"none"` and `"once"` never set `capped`; a `"once"` die
+# makes at most two physical rolls (the extra never re-explodes).
+explode_die <- function(x, explode) {
+  first <- sample.int(x, size = 1L)
+
+  if (explode == "none" || first != x) {
+    return(list(faces = first, total = first, capped = FALSE))
+  }
+
+  if (explode == "once") {
+    extra <- sample.int(x, size = 1L)
+    faces <- c(first, extra)
+    return(list(faces = faces, total = sum(faces), capped = FALSE))
+  }
+
+  # explode == "indef": keep rerolling while the max recurs, capped. The
+  # initial draw plus up to `explode_cap` rerolls, so at most `explode_cap + 1`
+  # physical faces. `capped` is TRUE only when the chain was force-stopped with
+  # the final reroll still maximal.
+  faces <- first
+  capped <- FALSE
+  rerolls <- 0L
+  repeat {
+    extra <- sample.int(x, size = 1L)
+    faces <- c(faces, extra)
+    rerolls <- rerolls + 1L
+    if (extra != x) {
+      break
+    }
+    if (rerolls >= explode_cap) {
+      capped <- TRUE
+      break
+    }
+  }
+  list(faces = faces, total = sum(faces), capped = capped)
 }
 
 # Reject a comparison flag that is not a single non-missing logical. Returns

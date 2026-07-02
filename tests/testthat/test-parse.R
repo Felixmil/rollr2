@@ -53,6 +53,42 @@ test_that("a malformed selector is rejected as invalid notation", {
   expect_snapshot(error = TRUE, parse_notation("2d6h1.5"))
 })
 
+# Explode marker ----
+
+test_that("parse_notation reads the explode-once and explode-indefinitely markers (AC-1)", {
+  expect_snapshot(parse_notation("2d6!"))
+  expect_snapshot(parse_notation("2d6!!"))
+  expect_snapshot(parse_notation("d6!"))
+})
+
+test_that("the explode marker composes with a keep selector and a modifier (AC-1)", {
+  expect_snapshot(parse_notation("4d6!h3"))
+  expect_snapshot(parse_notation("4d6!!l2"))
+  expect_snapshot(parse_notation("2d6!+1"))
+  expect_snapshot(parse_notation("2d6!!-2"))
+})
+
+test_that("the explode marker parses inside a multi-term notation (AC-1)", {
+  expect_snapshot(parse_notation("1d20+2d6!"))
+  expect_snapshot(parse_notation("2d6!!+1d4"))
+})
+
+test_that("a marker after the selector or modifier is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6h!"))
+  expect_snapshot(error = TRUE, parse_notation("2d6h3!"))
+  expect_snapshot(error = TRUE, parse_notation("2d6+1!"))
+})
+
+test_that("a stray count after the marker or an over-long marker is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6!3"))
+  expect_snapshot(error = TRUE, parse_notation("2d6!!!"))
+})
+
+test_that("a malformed selector after a valid marker is rejected as its non-explode form does (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6!h-1"))
+  expect_snapshot(error = TRUE, parse_notation("2d6!h1.5"))
+})
+
 test_that("explicit zero modifier equals no modifier", {
   expect_equal(parse_notation("2d6+0"), parse_notation("2d6"))
 })

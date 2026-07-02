@@ -11,5 +11,6 @@
 #' @importFrom ggplot2 theme_minimal
 #' @importFrom rlang .data
 #' @importFrom rlang abort
+#' @importFrom rlang warn
 ## usethis namespace: end
 NULL
