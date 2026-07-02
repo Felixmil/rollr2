@@ -17,15 +17,21 @@ roll_distribution(notation, n)
 \code{NdX+M}, \code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive
 \code{d}, whitespace-tolerant), optionally with a keep selector \code{h}/\code{l} and an
 optional count after the die size (e.g. \verb{2d20h}, \verb{4d6h3}), keeping the
-highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}). An explode marker
-may follow the die size, before any keep selector or modifier: \code{!} rerolls
-a maximum-face die once and sums both faces, \verb{!!} rerolls while the maximum
+highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}). In the same slot
+a drop selector \code{dl}/\code{dh}/\code{d} instead discards dice and sums the rest:
+\code{NdXdlK} drops the lowest \code{K}, \code{NdXdhK} drops the highest \code{K}, and the
+shorthand \code{NdXdK} drops the lowest \code{K}; a missing count drops one die. Drop
+is the inverse spelling of keep, so \code{NdXdlK} is \code{NdXh(N-K)} and \code{NdXdhK} is
+\code{NdXl(N-K)}; \verb{4d6dl1} (the D&D ability-score roll) is \verb{4d6h3}. The drop
+count \code{K} must satisfy \verb{1 <= K <= N - 1}. An explode marker may follow the
+die size, before any keep or drop selector or modifier: \code{!} rerolls a
+maximum-face die once and sums both faces, \verb{!!} rerolls while the maximum
 recurs, capped at 100 chained rerolls per die (e.g. \verb{2d6!}, \verb{2d6!!},
 \verb{4d6!h3}). Sampling is bounded by the same cap so it always terminates;
 \code{roll_distribution()} does not itself warn on the cap. Several such terms,
 plus bare integer constants, may be joined with \code{+} or \code{-} into one
 notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}); at least one dice term is
-required and each keep selector applies within its own term only.}
+required and each keep or drop selector applies within its own term only.}
 
 \item{n}{Number of whole-notation rolls to simulate. A positive integer.}
 

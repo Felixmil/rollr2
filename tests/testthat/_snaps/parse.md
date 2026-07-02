@@ -940,6 +940,355 @@
       i Received "2d6!h1.5".
       i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
 
+# parse_notation reads the drop-lowest, drop-highest, and shorthand forms (AC-1)
+
+    Code
+      parse_notation("4d6dl1")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "h"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("4d6dh1")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "l"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("4d6d1")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "h"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("4d6dl")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "h"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("4d6dh")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "l"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      
+      
+
+# the drop selector composes with an explode marker and a multi-term notation (AC-1)
+
+    Code
+      parse_notation("4d6!dl1")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "h"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "once"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("4d6dl1+1d8")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "h"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      
+      $terms[[2]]
+      $terms[[2]]$kind
+      [1] "dice"
+      
+      $terms[[2]]$sign
+      [1] 1
+      
+      $terms[[2]]$n
+      [1] 1
+      
+      $terms[[2]]$x
+      [1] 8
+      
+      $terms[[2]]$m
+      [1] 0
+      
+      $terms[[2]]$keep
+      [1] NA
+      
+      $terms[[2]]$keep_n
+      [1] NA
+      
+      $terms[[2]]$explode
+      [1] "none"
+      
+      
+      
+
+# a drop count outside 1 <= K <= N - 1 is rejected as a keep error (AC-3)
+
+    Code
+      parse_notation("4d6dl0")
+    Condition
+      Error in `parse_notation()`:
+      ! Drop count must be at least 1.
+      i Received drop count 0 in "4d6dl0".
+
+---
+
+    Code
+      parse_notation("4d6dl4")
+    Condition
+      Error in `parse_notation()`:
+      ! Drop count cannot leave fewer than one die.
+      i Received drop count 4 for 4 dice in "4d6dl4".
+
+---
+
+    Code
+      parse_notation("4d6dl5")
+    Condition
+      Error in `parse_notation()`:
+      ! Drop count cannot leave fewer than one die.
+      i Received drop count 5 for 4 dice in "4d6dl5".
+
+---
+
+    Code
+      parse_notation("1d6dl1")
+    Condition
+      Error in `parse_notation()`:
+      ! Drop count cannot leave fewer than one die.
+      i Received drop count 1 for 1 dice in "1d6dl1".
+
+# a multi-term drop-count error names the offending term (AC-3)
+
+    Code
+      parse_notation("4d6dl4+1d4")
+    Condition
+      Error in `parse_notation()`:
+      ! Drop count cannot leave fewer than one die.
+      i Received drop count 4 for 4 dice in term "4d6dl4" of "4d6dl4+1d4".
+
+# a term mixing keep and drop is rejected as invalid notation (AC-3)
+
+    Code
+      parse_notation("4d6h3dl1")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "4d6h3dl1".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+---
+
+    Code
+      parse_notation("4d6dl1h2")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "4d6dl1h2".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+# a malformed drop selector is rejected as invalid notation (AC-3)
+
+    Code
+      parse_notation("4d6dl-1")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "4d6dl-1".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+---
+
+    Code
+      parse_notation("4d6dl1.5")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "4d6dl1.5".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
 # unparseable notation is rejected
 
     Code

@@ -89,6 +89,57 @@ test_that("a malformed selector after a valid marker is rejected as its non-expl
   expect_snapshot(error = TRUE, parse_notation("2d6!h1.5"))
 })
 
+# Drop selector ----
+
+test_that("parse_notation reads the drop-lowest, drop-highest, and shorthand forms (AC-1)", {
+  expect_snapshot(parse_notation("4d6dl1"))
+  expect_snapshot(parse_notation("4d6dh1"))
+  expect_snapshot(parse_notation("4d6d1"))
+  expect_snapshot(parse_notation("4d6dl"))
+  expect_snapshot(parse_notation("4d6dh"))
+})
+
+test_that("the drop selector composes with an explode marker and a multi-term notation (AC-1)", {
+  expect_snapshot(parse_notation("4d6!dl1"))
+  expect_snapshot(parse_notation("4d6dl1+1d8"))
+})
+
+test_that("a drop selector translates to the equivalent keep selection (AC-2)", {
+  # Drop is the inverse spelling of keep, so the parsed record for a drop
+  # notation is byte-identical to its keep equivalent.
+  expect_equal(parse_notation("4d6dl1"), parse_notation("4d6h3"))
+  expect_equal(parse_notation("4d6dh1"), parse_notation("4d6l3"))
+  expect_equal(parse_notation("4d6d1"), parse_notation("4d6dl1"))
+  expect_equal(parse_notation("4d6dl"), parse_notation("4d6dl1"))
+  expect_equal(parse_notation("2d6dl1"), parse_notation("2d6h1"))
+})
+
+test_that("the drop marker and direction are case-insensitive (AC-2)", {
+  expect_equal(parse_notation("4D6DL1"), parse_notation("4d6dl1"))
+  expect_equal(parse_notation("4d6Dh1"), parse_notation("4d6dh1"))
+})
+
+test_that("a drop count outside 1 <= K <= N - 1 is rejected as a keep error (AC-3)", {
+  expect_snapshot(error = TRUE, parse_notation("4d6dl0"))
+  expect_snapshot(error = TRUE, parse_notation("4d6dl4"))
+  expect_snapshot(error = TRUE, parse_notation("4d6dl5"))
+  expect_snapshot(error = TRUE, parse_notation("1d6dl1"))
+})
+
+test_that("a multi-term drop-count error names the offending term (AC-3)", {
+  expect_snapshot(error = TRUE, parse_notation("4d6dl4+1d4"))
+})
+
+test_that("a term mixing keep and drop is rejected as invalid notation (AC-3)", {
+  expect_snapshot(error = TRUE, parse_notation("4d6h3dl1"))
+  expect_snapshot(error = TRUE, parse_notation("4d6dl1h2"))
+})
+
+test_that("a malformed drop selector is rejected as invalid notation (AC-3)", {
+  expect_snapshot(error = TRUE, parse_notation("4d6dl-1"))
+  expect_snapshot(error = TRUE, parse_notation("4d6dl1.5"))
+})
+
 test_that("explicit zero modifier equals no modifier", {
   expect_equal(parse_notation("2d6+0"), parse_notation("2d6"))
 })

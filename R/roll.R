@@ -13,7 +13,14 @@
 #'   `d`, whitespace-tolerant), optionally with a keep selector `h`/`l` and an
 #'   optional count after the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`), which
 #'   keeps the highest (`h`) or lowest (`l`) `K` dice (defaulting to `K = 1`).
-#'   An explode marker may follow the die size, before any keep selector or
+#'   In the same slot a drop selector `dl`/`dh`/`d` instead discards dice and
+#'   sums the rest: `NdXdlK` drops the lowest `K`, `NdXdhK` drops the highest
+#'   `K`, and the shorthand `NdXdK` drops the lowest `K`; a missing count drops
+#'   one die. Drop is the inverse spelling of keep, so `NdXdlK` is `NdXh(N-K)`
+#'   and `NdXdhK` is `NdXl(N-K)`; the conventional D&D roll `4d6dl1` (drop the
+#'   lowest of four d6) is `4d6h3`. The drop count `K` must satisfy
+#'   `1 <= K <= N - 1` (drop at least one, leave at least one). An explode
+#'   marker may follow the die size, before any keep or drop selector or
 #'   modifier: `!` rerolls a maximum-face die exactly once and sums the two
 #'   faces (the extra die does not itself explode), while `!!` keeps rerolling
 #'   while the maximum recurs, capped at 100 chained rerolls per die. So `2d6!`,
@@ -21,8 +28,9 @@
 #'   cap, `roll()` emits a warning while still returning a valid roll.
 #'   Several such terms, plus bare integer constants, may be joined with `+` or
 #'   `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`);
-#'   at least one dice term is required and each keep selector applies within
-#'   its own term only. See [roll_distribution()] to summarise many rolls.
+#'   at least one dice term is required and each keep or drop selector applies
+#'   within its own term only. See [roll_distribution()] to summarise many
+#'   rolls.
 #' @param compare A length-1 logical. When `TRUE`, printing the roll also
 #'   shows where the total sits within the notation's full theoretical outcome
 #'   distribution: a header line stating what percent of outcomes the roll
