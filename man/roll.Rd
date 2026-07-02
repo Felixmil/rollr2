@@ -5,7 +5,7 @@
 \alias{print.roll}
 \title{Roll dice from notation once}
 \usage{
-roll(notation)
+roll(notation, compare = FALSE)
 
 \method{print}{roll}(x, ...)
 }
@@ -17,6 +17,14 @@ count may follow the die size (e.g. \verb{2d20h}, \verb{4d6h3}, \verb{3d6l2}); i
 the highest (\code{h}) or lowest (\code{l}) \code{K} dice, defaulting to \code{K = 1}. See
 \code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
 
+\item{compare}{A length-1 logical. When \code{TRUE}, printing the roll also
+shows where the total sits within the notation's full theoretical outcome
+distribution: a header line stating what percent of outcomes the roll
+beats, then a text histogram of the exact outcome probabilities with the
+rolled total's bar marked. Defaults to \code{FALSE}, which prints only the
+roll itself. The comparison is computed, not sampled, so a given
+(notation, total) pair always reports the same standing.}
+
 \item{x}{A \code{roll} object, as returned by \code{roll()}.}
 
 \item{...}{Ignored, for compatibility with the \code{\link[=print]{print()}} generic.}
@@ -26,7 +34,8 @@ A \code{roll} object: a list with \code{dice} (integer vector of length \code{N}
 each in \verb{1..X}, listing every die rolled), \code{total} (integer scalar equal
 to the sum of the kept dice plus \code{M}), \code{kept} (the kept dice, equal to
 \code{dice} when there is no selector), the parsed components \code{n}, \code{x}, \code{m},
-\code{keep}, \code{keep_n}, and the original \code{notation}.
+\code{keep}, \code{keep_n}, the original \code{notation}, and \code{compare} (the logical
+flag from the argument, controlling the print method).
 }
 \description{
 Parses a dice-notation string and simulates a single roll: \code{N} independent
@@ -40,5 +49,6 @@ set.seed(1)
 roll("2d20+2")
 roll("d6")
 roll("4d6h3")
+roll("2d6", compare = TRUE)
 
 }
