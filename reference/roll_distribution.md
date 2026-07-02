@@ -14,6 +14,9 @@ roll_distribution(notation, n)
 
 # S3 method for class 'roll_distribution'
 print(x, ...)
+
+# S3 method for class 'roll_distribution'
+plot(x, ...)
 ```
 
 ## Arguments
@@ -37,7 +40,8 @@ print(x, ...)
 - ...:
 
   Ignored, for compatibility with the
-  [`print()`](https://rdrr.io/r/base/print.html) generic.
+  [`print()`](https://rdrr.io/r/base/print.html) and
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) generics.
 
 ## Value
 
@@ -49,6 +53,15 @@ die count `N` when there is no selector), `n`, the parsed components
 `dice_n`, `x`, `m`, `keep`, `keep_n`, and the original `notation`. Its
 [`print()`](https://rdrr.io/r/base/print.html) method renders the counts
 and a text histogram for the console.
+
+## Details
+
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) returns a
+themed
+[`ggplot2::ggplot()`](https://ggplot2.tidyverse.org/reference/ggplot.html)
+bar chart of the sampled counts across the notation's theoretical total
+range. The returned object auto-prints when called at the top level and
+can be captured and extended with `+`.
 
 ## Examples
 

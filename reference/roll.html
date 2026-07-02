@@ -59,7 +59,10 @@ applied once to that kept sum.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">roll</span><span class="op">(</span><span class="va">notation</span>, compare <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'roll'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'roll'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -90,7 +93,8 @@ roll itself. The comparison is computed, not sampled, so a given
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Ignored, for compatibility with the <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> generic.</p></dd>
+<dd><p>Ignored, for compatibility with the <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>
+generics.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -101,6 +105,15 @@ to the sum of the kept dice plus <code>M</code>), <code>kept</code> (the kept di
 <code>dice</code> when there is no selector), the parsed components <code>n</code>, <code>x</code>, <code>m</code>,
 <code>keep</code>, <code>keep_n</code>, the original <code>notation</code>, and <code>compare</code> (the logical
 flag from the argument, controlling the print method).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p><code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> returns a themed <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot2::ggplot()</a></code> bar chart of the notation's
+exact theoretical outcome distribution, with the rolled total's bar
+highlighted and its percentile standing shown in the subtitle. The plot
+always shows the theoretical distribution and never reads <code>compare</code>, which
+remains a print-only switch. The returned object auto-prints when called at
+the top level and can be captured and extended with <code>+</code>.</p>
     </div>
 
     <div class="section level2">

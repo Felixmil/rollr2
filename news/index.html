@@ -40,6 +40,10 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="rollr2-0009000">rollr2 0.0.0.9000<a class="anchor" aria-label="anchor" href="#rollr2-0009000"></a></h2>
 <ul><li>
+<code><a href="../reference/roll.html">plot.roll()</a></code> returns a themed ggplot of the notation’s exact outcome distribution with the rolled total’s bar highlighted and its percentile standing in the subtitle; it always shows the theoretical distribution and ignores the <code>compare</code> flag.</li>
+<li>
+<code><a href="../reference/roll_distribution.html">plot.roll_distribution()</a></code> returns a themed ggplot bar chart of the sampled totals across the notation’s range.</li>
+<li>
 <code><a href="../reference/roll.html">roll()</a></code> rolls a dice-notation string once, returning the individual die results and the total (sum of dice plus modifier).</li>
 <li>
 <code><a href="../reference/roll.html">roll()</a></code> gains a <code>compare</code> argument that, when <code>TRUE</code>, prints the notation’s full outcome distribution as a text histogram with the rolled total’s bar marked and a header stating what percent of outcomes the roll beats; the standing is computed exactly (never sampled), so it is the same for a given notation and total across sessions. Defaults to <code>FALSE</code>, leaving existing output unchanged.</li>

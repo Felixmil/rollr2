@@ -74,43 +74,15 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Felixmil/rollr2" class="external-link">rollr2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
 </div>
-<p><code><a href="../reference/roll_distribution.html">roll_distribution()</a></code> samples many rolls and tallies how often each total comes up. The console print method draws a text histogram, but the same <code>counts</code> are easy to plot with ggplot2 for a clearer picture of a notation’s shape. Because the distribution is sampled, every chunk below fixes a seed so the figures are reproducible.</p>
-<section class="level2"><h2 id="from-counts-to-a-data-frame">From counts to a data frame<a class="anchor" aria-label="anchor" href="#from-counts-to-a-data-frame"></a>
+<p><code>rollr2</code> results carry rich distributional information, and both result classes have a <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> method that turns a result into a finished, themed ggplot2 chart with a single call. <code><a href="../reference/roll_distribution.html">roll_distribution()</a></code> plots the sampled totals from many rolls, while <code><a href="../reference/roll.html">roll()</a></code> plots the notation’s exact theoretical outcome distribution with the rolled total highlighted. Because <code><a href="../reference/roll_distribution.html">roll_distribution()</a></code> is sampled, the chunks below fix a seed so those figures are reproducible; <code>plot(roll(...))</code> reads the exact distribution and needs a seed only to fix which total gets highlighted.</p>
+<section class="level2"><h2 id="a-sampled-distribution">A sampled distribution<a class="anchor" aria-label="anchor" href="#a-sampled-distribution"></a>
 </h2>
-<p>The <code>counts</code> field is a named integer vector: the names are the outcome totals and the values are how often each total occurred. Turn it into a tidy data frame by reading the names as the total and stripping the names off the values.</p>
+<p><code><a href="../reference/roll_distribution.html">roll_distribution()</a></code> samples many rolls and tallies how often each total comes up. Passing the result to <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> draws a bar chart of those counts across the notation’s total range. Two six-sided dice give the familiar triangular distribution, peaking at 7.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"2d6"</span>, n <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">dist_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  total <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">counts</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  count <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">counts</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dist_df</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   total count</span></span>
-<span><span class="co">#&gt; 1     2   283</span></span>
-<span><span class="co">#&gt; 2     3   577</span></span>
-<span><span class="co">#&gt; 3     4   823</span></span>
-<span><span class="co">#&gt; 4     5  1115</span></span>
-<span><span class="co">#&gt; 5     6  1409</span></span>
-<span><span class="co">#&gt; 6     7  1614</span></span></code></pre></div>
-</div>
-</section><section class="level2"><h2 id="a-single-distribution">A single distribution<a class="anchor" aria-label="anchor" href="#a-single-distribution"></a>
-</h2>
-<p>Two six-sided dice give the familiar triangular distribution, peaking at 7.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">dist_df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">total</span>, y <span class="op">=</span> <span class="va">count</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"steelblue"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span>breaks <span class="op">=</span> <span class="va">dist_df</span><span class="op">$</span><span class="va">total</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"Distribution of totals for 2d6"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">n</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>, <span class="st">" simulated rolls"</span><span class="op">)</span>,</span>
-<span>    x <span class="op">=</span> <span class="st">"Total"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Count"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="distributions_files/figure-html/single-2d6-1.png" style="width:100.0%"></p>
@@ -118,62 +90,58 @@
 </div>
 </div>
 </div>
-</section><section class="level2"><h2 id="comparing-a-flat-roll-with-a-keep-selector">Comparing a flat roll with a keep selector<a class="anchor" aria-label="anchor" href="#comparing-a-flat-roll-with-a-keep-selector"></a>
+</section><section class="level2"><h2 id="a-single-roll-against-its-distribution">A single roll against its distribution<a class="anchor" aria-label="anchor" href="#a-single-roll-against-its-distribution"></a>
 </h2>
-<p>Keep selectors change a distribution’s shape. A common example is character-ability generation: <code>4d6h3</code> (roll four dice, keep the highest three) skews higher than a flat <code>3d6</code>, even though both range from 3 to 18. A small helper turns any notation into a tidy data frame so several distributions can be plotted together.</p>
+<p><code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> on a <code>roll</code> shows the notation’s exact theoretical outcome distribution and highlights the bar for the total you actually rolled. The subtitle reports the roll’s percentile standing, the same “beats P% of outcomes” reading the <code>compare = TRUE</code> print path uses. The plot always shows the theoretical distribution, whether or not the roll was created with <code>compare = TRUE</code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">as_dist_df</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">notation</span>, <span class="va">n</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="va">notation</span>, n <span class="op">=</span> <span class="va">n</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    notation <span class="op">=</span> <span class="va">notation</span>,</span>
-<span>    total <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">counts</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    count <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">counts</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
-<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>  <span class="fu">as_dist_df</span><span class="op">(</span><span class="st">"3d6"</span>, n <span class="op">=</span> <span class="fl">20000</span><span class="op">)</span>,</span>
-<span>  <span class="fu">as_dist_df</span><span class="op">(</span><span class="st">"4d6h3"</span>, n <span class="op">=</span> <span class="fl">20000</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">total</span>, y <span class="op">=</span> <span class="va">count</span>, fill <span class="op">=</span> <span class="va">notation</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>position <span class="op">=</span> <span class="st">"identity"</span>, alpha <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span>breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">$</span><span class="va">total</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"Flat 3d6 versus keep-highest 4d6h3"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="st">"Keeping the highest three of four dice shifts the distribution upward"</span>,</span>
-<span>    x <span class="op">=</span> <span class="st">"Total"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Count"</span>,</span>
-<span>    fill <span class="op">=</span> <span class="st">"Notation"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"2d6"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="distributions_files/figure-html/compare-1.png" style="width:100.0%"></p>
+<figure><p><img src="distributions_files/figure-html/single-roll-1.png" style="width:100.0%"></p>
 </figure>
 </div>
 </div>
 </div>
-<p>Faceting the same data makes each shape easier to read on its own.</p>
+</section><section class="level2"><h2 id="comparing-a-flat-roll-with-a-keep-selector">Comparing a flat roll with a keep selector<a class="anchor" aria-label="anchor" href="#comparing-a-flat-roll-with-a-keep-selector"></a>
+</h2>
+<p>Keep selectors change a distribution’s shape. A common example is character-ability generation: <code>4d6h3</code> (roll four dice, keep the highest three) skews higher than a flat <code>3d6</code>, even though both range from 3 to 18. Sampling each notation and plotting the results shows the shift.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">total</span>, y <span class="op">=</span> <span class="va">count</span>, fill <span class="op">=</span> <span class="va">notation</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>show.legend <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/vars.html" class="external-link">vars</a></span><span class="op">(</span><span class="va">notation</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_x_continuous</a></span><span class="op">(</span>breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">$</span><span class="va">total</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
-<span>    title <span class="op">=</span> <span class="st">"The same comparison, faceted"</span>,</span>
-<span>    x <span class="op">=</span> <span class="st">"Total"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Count"</span></span>
-<span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"3d6"</span>, n <span class="op">=</span> <span class="fl">20000</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
-<figure><p><img src="distributions_files/figure-html/facet-1.png" style="width:100.0%"></p>
+<figure><p><img src="distributions_files/figure-html/flat-3d6-1.png" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"4d6h3"</span>, n <span class="op">=</span> <span class="fl">20000</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="distributions_files/figure-html/keep-4d6h3-1.png" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+</section><section class="level2"><h2 id="extending-a-returned-plot">Extending a returned plot<a class="anchor" aria-label="anchor" href="#extending-a-returned-plot"></a>
+</h2>
+<p>Each <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> method returns a standard <code>ggplot</code> object, so you can capture it and keep composing with <code>+</code>, for example to recolour the bars or drop the subtitle.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"2d6"</span>, n <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">p</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"darkorange"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>subtitle <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="distributions_files/figure-html/extend-1.png" style="width:100.0%"></p>
 </figure>
 </div>
 </div>

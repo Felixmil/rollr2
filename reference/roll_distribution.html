@@ -59,7 +59,10 @@ total reflects the kept dice plus the modifier.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">roll_distribution</span><span class="op">(</span><span class="va">notation</span>, <span class="va">n</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'roll_distribution'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'roll_distribution'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -83,7 +86,8 @@ highest/lowest <code>K</code> dice per roll (defaulting to <code>K = 1</code>).<
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Ignored, for compatibility with the <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> generic.</p></dd>
+<dd><p>Ignored, for compatibility with the <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>
+generics.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -96,6 +100,13 @@ count, equal to the die count <code>N</code> when there is no selector), <code>n
 parsed components <code>dice_n</code>, <code>x</code>, <code>m</code>, <code>keep</code>, <code>keep_n</code>, and the original
 <code>notation</code>. Its <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> method renders the counts and a text histogram
 for the console.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p><code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> returns a themed <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot2::ggplot()</a></code> bar chart of the sampled
+counts across the notation's theoretical total range. The returned object
+auto-prints when called at the top level and can be captured and extended
+with <code>+</code>.</p>
     </div>
 
     <div class="section level2">

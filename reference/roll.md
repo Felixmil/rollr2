@@ -13,6 +13,9 @@ roll(notation, compare = FALSE)
 
 # S3 method for class 'roll'
 print(x, ...)
+
+# S3 method for class 'roll'
+plot(x, ...)
 ```
 
 ## Arguments
@@ -45,7 +48,8 @@ print(x, ...)
 - ...:
 
   Ignored, for compatibility with the
-  [`print()`](https://rdrr.io/r/base/print.html) generic.
+  [`print()`](https://rdrr.io/r/base/print.html) and
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) generics.
 
 ## Value
 
@@ -55,6 +59,18 @@ the sum of the kept dice plus `M`), `kept` (the kept dice, equal to
 `dice` when there is no selector), the parsed components `n`, `x`, `m`,
 `keep`, `keep_n`, the original `notation`, and `compare` (the logical
 flag from the argument, controlling the print method).
+
+## Details
+
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) returns a
+themed
+[`ggplot2::ggplot()`](https://ggplot2.tidyverse.org/reference/ggplot.html)
+bar chart of the notation's exact theoretical outcome distribution, with
+the rolled total's bar highlighted and its percentile standing shown in
+the subtitle. The plot always shows the theoretical distribution and
+never reads `compare`, which remains a print-only switch. The returned
+object auto-prints when called at the top level and can be captured and
+extended with `+`.
 
 ## Examples
 

@@ -2,6 +2,14 @@
 
 ## rollr2 0.0.0.9000
 
+- [`plot.roll()`](https://felixmil.github.io/rollr2/reference/roll.md)
+  returns a themed ggplot of the notation’s exact outcome distribution
+  with the rolled total’s bar highlighted and its percentile standing in
+  the subtitle; it always shows the theoretical distribution and ignores
+  the `compare` flag.
+- [`plot.roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)
+  returns a themed ggplot bar chart of the sampled totals across the
+  notation’s range.
 - [`roll()`](https://felixmil.github.io/rollr2/reference/roll.md) rolls
   a dice-notation string once, returning the individual die results and
   the total (sum of dice plus modifier).
