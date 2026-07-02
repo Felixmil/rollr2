@@ -12,5 +12,6 @@
 #' @importFrom rlang .data
 #' @importFrom rlang abort
 #' @importFrom rlang warn
+#' @importFrom stats convolve
 ## usethis namespace: end
 NULL
