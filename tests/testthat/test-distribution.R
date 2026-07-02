@@ -213,12 +213,120 @@ test_that("print.roll_distribution renders a multi-term notation", {
 })
 
 test_that("grand_total_pmf reduces to outcome_pmf for a lone dice term", {
-  for (nt in c("2d6", "3d8-1", "4d6h3", "3d6l2", "1d4-10")) {
+  for (nt in c("2d6", "3d8-1", "4d6h3", "3d6l2", "1d4-10", "2d6!", "2d6!!")) {
     terms <- parse_notation(nt)$terms
     sole <- terms[[1]]
     expect_equal(
       grand_total_pmf(terms),
-      outcome_pmf(sole$n, sole$x, sole$m, sole$keep, sole$keep_n)
+      outcome_pmf(
+        sole$n,
+        sole$x,
+        sole$m,
+        sole$keep,
+        sole$keep_n,
+        sole$explode
+      )
     )
   }
+})
+
+# Exploding dice ----
+
+test_that("roll_distribution samples exploding notation, terminates, reproduces, and reports the PMF range (AC-8)", {
+  withr::local_seed(1)
+  d_once <- roll_distribution("2d6!", n = 2000)
+  expect_equal(sum(d_once$counts), 2000L)
+  pmf_once <- grand_total_pmf(parse_notation("2d6!")$terms)
+  expect_equal(
+    d_once$range,
+    c(min(as.integer(names(pmf_once))), max(as.integer(names(pmf_once))))
+  )
+
+  # `!!` always terminates (bounded by the cap) even though its range is huge.
+  withr::local_seed(2)
+  d_indef <- roll_distribution("2d6!!", n = 2000)
+  expect_equal(sum(d_indef$counts), 2000L)
+  pmf_indef <- grand_total_pmf(parse_notation("2d6!!")$terms)
+  expect_equal(
+    d_indef$range,
+    c(min(as.integer(names(pmf_indef))), max(as.integer(names(pmf_indef))))
+  )
+
+  first <- withr::with_seed(7, roll_distribution("2d6!", n = 500))
+  second <- withr::with_seed(7, roll_distribution("2d6!", n = 500))
+  expect_equal(first$counts, second$counts)
+})
+
+test_that("term_bounds reports the finite capped bounds for an exploding term (AC-10)", {
+  once <- parse_notation("2d6!")$terms[[1]]
+  expect_equal(term_bounds(once), c(2L, 24L))
+
+  # `!!` per-die max is (explode_cap + 1) * x; 1d6!! is 1..606, 2d6!! is 2..1212.
+  indef1 <- parse_notation("1d6!!")$terms[[1]]
+  expect_equal(term_bounds(indef1), c(1L, (explode_cap + 1L) * 6L))
+
+  indef2 <- parse_notation("2d6!!")$terms[[1]]
+  expect_equal(term_bounds(indef2), c(2L, 2L * (explode_cap + 1L) * 6L))
+})
+
+test_that("grand_total_pmf for an exploding notation is a finite normalized distribution over contiguous outcomes (AC-9)", {
+  for (nt in c("2d6!", "2d6!!", "4d6!h3", "4d6!!l2", "2d6!+1", "1d20+2d6!")) {
+    pmf <- grand_total_pmf(parse_notation(nt)$terms)
+    outcomes <- as.integer(names(pmf))
+
+    expect_equal(sum(pmf), 1)
+    expect_true(all(pmf >= 0))
+    expect_equal(outcomes, seq(min(outcomes), max(outcomes)))
+  }
+})
+
+test_that("a wide exploding notation stays fast and finite (AC-9, performance)", {
+  # 10d100! spans 1991 outcomes; the convolution never enumerates the joint
+  # dice space, so this returns quickly and finitely.
+  elapsed <- system.time({
+    pmf <- grand_total_pmf(parse_notation("10d100!")$terms)
+  })[["elapsed"]]
+
+  expect_true(all(is.finite(pmf)))
+  expect_equal(sum(pmf), 1)
+  expect_lt(elapsed, 5)
+})
+
+test_that("the exact single-explode-once per-die PMF has the forced-reroll gap and correct weights (AC-11)", {
+  # 1d6!: 1/6 on 1..5, zero at 6 (a maximum first face forces a reroll), 1/36
+  # on 7..12.
+  pmf <- outcome_pmf(1L, 6L, 0L, NA_character_, NA_integer_, "once")
+
+  expect_equal(as.integer(names(pmf)), seq(1L, 12L))
+  expect_equal(unname(pmf[1:5]), rep(1 / 6, 5))
+  expect_equal(unname(pmf[6]), 0)
+  expect_equal(unname(pmf[7:12]), rep(1 / 36, 6))
+})
+
+test_that("the explode-indefinitely per-die PMF folds the depth-cap tail into the largest outcome and sums to 1 (AC-11)", {
+  pmf <- outcome_pmf(1L, 6L, 0L, NA_character_, NA_integer_, "indef")
+
+  expect_equal(sum(pmf), 1)
+  expect_true(all(pmf >= 0))
+  # The largest outcome is the sampler's cap total (explode_cap + 1) * x, and it
+  # carries the folded residual tail.
+  expect_equal(max(as.integer(names(pmf))), (explode_cap + 1L) * 6L)
+  expect_gt(pmf[length(pmf)], 0)
+})
+
+test_that("outcome_pmf matches brute-force enumeration for an explode-once keep case (AC-11)", {
+  # Enumerate all 3^3 per-die-outcome triples of 3d3!h2 weighted by the exact
+  # single-die 1d3! distribution, keep the top 2, and tabulate. 1d3! has support
+  # 1,2 (each 1/3), 0 at 3, and 4,5,6 (each 1/9).
+  die <- c(1 / 3, 1 / 3, 0, 1 / 9, 1 / 9, 1 / 9)
+  grid <- expand.grid(a = 1:6, b = 1:6, c = 1:6)
+  w <- die[grid$a] * die[grid$b] * die[grid$c]
+  kept <- apply(grid, 1L, \(r) sum(sort(r, decreasing = TRUE)[1:2]))
+  expected <- tapply(w, kept, sum)
+
+  pmf <- outcome_pmf(3L, 3L, 0L, "h", 2L, "once")
+  dense <- setNames(numeric(length(pmf)), names(pmf))
+  dense[names(expected)] <- expected
+
+  expect_equal(unname(as.numeric(dense)), unname(as.numeric(pmf)))
 })

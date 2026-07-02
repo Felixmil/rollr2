@@ -17,8 +17,13 @@ roll_distribution(notation, n)
 \code{NdX+M}, \code{NdX-M}, or the count-omitted \code{dX} variants (case-insensitive
 \code{d}, whitespace-tolerant), optionally with a keep selector \code{h}/\code{l} and an
 optional count after the die size (e.g. \verb{2d20h}, \verb{4d6h3}), keeping the
-highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}). Several such
-terms, plus bare integer constants, may be joined with \code{+} or \code{-} into one
+highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}). An explode marker
+may follow the die size, before any keep selector or modifier: \code{!} rerolls
+a maximum-face die once and sums both faces, \verb{!!} rerolls while the maximum
+recurs, capped at 100 chained rerolls per die (e.g. \verb{2d6!}, \verb{2d6!!},
+\verb{4d6!h3}). Sampling is bounded by the same cap so it always terminates;
+\code{roll_distribution()} does not itself warn on the cap. Several such terms,
+plus bare integer constants, may be joined with \code{+} or \code{-} into one
 notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}); at least one dice term is
 required and each keep selector applies within its own term only.}
 

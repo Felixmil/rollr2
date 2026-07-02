@@ -18,6 +18,12 @@ roll(notation, compare = FALSE)
 \code{d}, whitespace-tolerant), optionally with a keep selector \code{h}/\code{l} and an
 optional count after the die size (e.g. \verb{2d20h}, \verb{4d6h3}, \verb{3d6l2}), which
 keeps the highest (\code{h}) or lowest (\code{l}) \code{K} dice (defaulting to \code{K = 1}).
+An explode marker may follow the die size, before any keep selector or
+modifier: \code{!} rerolls a maximum-face die exactly once and sums the two
+faces (the extra die does not itself explode), while \verb{!!} keeps rerolling
+while the maximum recurs, capped at 100 chained rerolls per die. So \verb{2d6!},
+\verb{2d6!!}, \verb{4d6!h3}, and \verb{2d6!+1} are all valid. When a \verb{!!} die reaches the
+cap, \code{roll()} emits a warning while still returning a valid roll.
 Several such terms, plus bare integer constants, may be joined with \code{+} or
 \code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}, \verb{1d20+1d6+1d4+3});
 at least one dice term is required and each keep selector applies within
@@ -45,8 +51,10 @@ dice in term order), \code{terms} (the per-term breakdown, each element a list
 with the term's parsed fields plus its \code{dice}, \code{kept}, and \code{subtotal}),
 the original \code{notation}, and \code{compare} (the logical flag controlling the
 print method). For a single-term notation the parsed components \code{n}, \code{x},
-\code{m}, \code{keep}, \code{keep_n} are also present at the top level; they are omitted
-for a multi-term notation, where per-term access via \code{terms} is required.
+\code{m}, \code{keep}, \code{keep_n}, \code{explode} are also present at the top level; they
+are omitted for a multi-term notation, where per-term access via \code{terms}
+is required. For an exploding term \code{dice} still lists every physical die
+including rerolls in draw order, and \code{kept} lists the kept per-die totals.
 }
 \description{
 Parses a dice-notation string and simulates a single roll. A notation may

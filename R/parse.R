@@ -8,11 +8,18 @@
 #' (case-insensitive `d`, whitespace-tolerant). A missing leading count
 #' defaults to `N = 1` and a missing modifier to `M = 0`.
 #'
-#' An optional keep selector may follow the die size, before the modifier:
-#' `h`/`l` (case-insensitive) requests keeping only the highest/lowest dice,
-#' optionally followed by a keep count `K` (e.g. `2d20h`, `4d6h3`, `3d6l2`).
-#' A missing keep count defaults to `K = 1`. Keep selection applies within its
-#' own term only; there is no cross-term keep.
+#' An optional explode marker may follow the die size, before any keep
+#' selector or modifier: `!` (explode once) or `!!` (explode indefinitely).
+#' Under `!` a die that shows its maximum face is rerolled once and the two
+#' faces are summed; the extra die does not itself explode. Under `!!` the die
+#' keeps rerolling while the maximum recurs, capped at a fixed 100 chained
+#' rerolls per die. So `2d6!`, `2d6!!`, `4d6!h3`, and `2d6!+1` are all valid.
+#'
+#' An optional keep selector may follow the explode marker, before the
+#' modifier: `h`/`l` (case-insensitive) requests keeping only the
+#' highest/lowest dice, optionally followed by a keep count `K` (e.g. `2d20h`,
+#' `4d6h3`, `3d6l2`). A missing keep count defaults to `K = 1`. Keep selection
+#' applies within its own term only; there is no cross-term keep.
 #'
 #' A bare signed integer is a constant term (for example the trailing `+3` in
 #' `1d20+1d6+1d4+3`). At least one dice term is required; a notation of only
@@ -23,11 +30,12 @@
 #'
 #' @return A list with a single element `terms`, an ordered list of term
 #'   records in the order they appear in the notation. A dice term is
-#'   `list(kind = "dice", sign, n, x, m, keep, keep_n)` where `sign` is the
-#'   term's leading sign folded to `+1L`/`-1L`, `n`/`x` are integer die count
-#'   and size, `m` the integer within-term modifier, `keep` the selector
-#'   direction (`"h"`, `"l"`, or `NA_character_`), and `keep_n` the integer keep
-#'   count (or `NA_integer_`). A constant term is `list(kind = "const", value)`
+#'   `list(kind = "dice", sign, n, x, m, keep, keep_n, explode)` where `sign`
+#'   is the term's leading sign folded to `+1L`/`-1L`, `n`/`x` are integer die
+#'   count and size, `m` the integer within-term modifier, `keep` the selector
+#'   direction (`"h"`, `"l"`, or `NA_character_`), `keep_n` the integer keep
+#'   count (or `NA_integer_`), and `explode` the explode mode (`"none"`,
+#'   `"once"`, or `"indef"`). A constant term is `list(kind = "const", value)`
 #'   where `value` is the signed integer contribution.
 #'
 #' @keywords internal
@@ -117,6 +125,7 @@ tokenise_terms <- function(trimmed, notation, call) {
   # to end the token so the next term is scanned separately.
   dice_body <- paste0(
     "(?:\\d*)[dD](?:\\d+)",
+    "(?:!{1,2})?",
     "(?:[hHlL](?:\\d+|(?![+-])|(?=[+-]\\s*\\d*[dD])))?",
     "(?:\\s*[+-]\\s*\\d+(?![0-9dD]))?"
   )
@@ -201,7 +210,7 @@ parse_term <- function(token, notation, n_terms, call) {
   match <- regmatches(
     body,
     regexec(
-      "^(\\d*)[dD](\\d+)([hHlL](?:\\d+|(?![+-])))?\\s*([+-]\\s*\\d+)?$",
+      "^(\\d*)[dD](\\d+)(!{1,2})?([hHlL](?:\\d+|(?![+-])))?\\s*([+-]\\s*\\d+)?$",
       body,
       perl = TRUE
     )
@@ -219,8 +228,21 @@ parse_term <- function(token, notation, n_terms, call) {
 
   count_str <- match[[2]]
   size_str <- match[[3]]
-  selector_str <- match[[4]]
-  modifier_str <- match[[5]]
+  marker_str <- match[[4]]
+  selector_str <- match[[5]]
+  modifier_str <- match[[6]]
+
+  # Explode marker: `!` explodes each maximum-face die once, `!!` explodes
+  # indefinitely (capped). Absent when the marker group is empty. Three
+  # distinguishable states with a "no explode" default so marker-free records
+  # only gain the appended `explode = "none"` field.
+  explode <- if (!nzchar(marker_str)) {
+    "none"
+  } else if (marker_str == "!") {
+    "once"
+  } else {
+    "indef"
+  }
 
   n <- if (nzchar(count_str)) as.integer(count_str) else 1L
   x <- as.integer(size_str)
@@ -316,7 +338,8 @@ parse_term <- function(token, notation, n_terms, call) {
     x = x,
     m = m,
     keep = keep,
-    keep_n = keep_n
+    keep_n = keep_n,
+    explode = explode
   )
 }
 

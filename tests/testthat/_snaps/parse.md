@@ -26,6 +26,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -56,6 +59,9 @@
       
       $terms[[1]]$keep_n
       [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -88,6 +94,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -118,6 +127,9 @@
       
       $terms[[1]]$keep_n
       [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -150,6 +162,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -180,6 +195,9 @@
       
       $terms[[1]]$keep_n
       [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -212,6 +230,9 @@
       $terms[[1]]$keep_n
       [1] 1
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -242,6 +263,9 @@
       
       $terms[[1]]$keep_n
       [1] 1
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -274,6 +298,9 @@
       $terms[[1]]$keep_n
       [1] 3
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -304,6 +331,9 @@
       
       $terms[[1]]$keep_n
       [1] 2
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -336,6 +366,9 @@
       $terms[[1]]$keep_n
       [1] 1
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -366,6 +399,9 @@
       
       $terms[[1]]$keep_n
       [1] 1
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -398,6 +434,9 @@
       $terms[[1]]$keep_n
       [1] 3
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -428,6 +467,9 @@
       
       $terms[[1]]$keep_n
       [1] 3
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -468,6 +510,434 @@
       Error in `parse_notation()`:
       ! `notation` is not valid dice notation.
       i Received "2d6h1.5".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+# parse_notation reads the explode-once and explode-indefinitely markers (AC-1)
+
+    Code
+      parse_notation("2d6!")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 2
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "once"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("2d6!!")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 2
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "indef"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("d6!")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 1
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "once"
+      
+      
+      
+
+# the explode marker composes with a keep selector and a modifier (AC-1)
+
+    Code
+      parse_notation("4d6!h3")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "h"
+      
+      $terms[[1]]$keep_n
+      [1] 3
+      
+      $terms[[1]]$explode
+      [1] "once"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("4d6!!l2")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 4
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] "l"
+      
+      $terms[[1]]$keep_n
+      [1] 2
+      
+      $terms[[1]]$explode
+      [1] "indef"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("2d6!+1")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 2
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 1
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "once"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("2d6!!-2")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 2
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] -2
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "indef"
+      
+      
+      
+
+# the explode marker parses inside a multi-term notation (AC-1)
+
+    Code
+      parse_notation("1d20+2d6!")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 1
+      
+      $terms[[1]]$x
+      [1] 20
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      
+      $terms[[2]]
+      $terms[[2]]$kind
+      [1] "dice"
+      
+      $terms[[2]]$sign
+      [1] 1
+      
+      $terms[[2]]$n
+      [1] 2
+      
+      $terms[[2]]$x
+      [1] 6
+      
+      $terms[[2]]$m
+      [1] 0
+      
+      $terms[[2]]$keep
+      [1] NA
+      
+      $terms[[2]]$keep_n
+      [1] NA
+      
+      $terms[[2]]$explode
+      [1] "once"
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("2d6!!+1d4")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 2
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "indef"
+      
+      
+      $terms[[2]]
+      $terms[[2]]$kind
+      [1] "dice"
+      
+      $terms[[2]]$sign
+      [1] 1
+      
+      $terms[[2]]$n
+      [1] 1
+      
+      $terms[[2]]$x
+      [1] 4
+      
+      $terms[[2]]$m
+      [1] 0
+      
+      $terms[[2]]$keep
+      [1] NA
+      
+      $terms[[2]]$keep_n
+      [1] NA
+      
+      $terms[[2]]$explode
+      [1] "none"
+      
+      
+      
+
+# a marker after the selector or modifier is rejected (AC-2)
+
+    Code
+      parse_notation("2d6h!")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6h!".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+---
+
+    Code
+      parse_notation("2d6h3!")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6h3!".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+---
+
+    Code
+      parse_notation("2d6+1!")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6+1!".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+# a stray count after the marker or an over-long marker is rejected (AC-2)
+
+    Code
+      parse_notation("2d6!3")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6!3".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+---
+
+    Code
+      parse_notation("2d6!!!")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6!!!".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+# a malformed selector after a valid marker is rejected as its non-explode form does (AC-2)
+
+    Code
+      parse_notation("2d6!h-1")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6!h-1".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+---
+
+    Code
+      parse_notation("2d6!h1.5")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "2d6!h1.5".
       i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
 
 # unparseable notation is rejected
@@ -601,6 +1071,9 @@
       $terms[[1]]$keep_n
       [1] 1
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       $terms[[2]]
       $terms[[2]]$kind
@@ -623,6 +1096,9 @@
       
       $terms[[2]]$keep_n
       [1] NA
+      
+      $terms[[2]]$explode
+      [1] "none"
       
       
       
@@ -655,6 +1131,9 @@
       $terms[[1]]$keep_n
       [1] 1
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       $terms[[2]]
       $terms[[2]]$kind
@@ -677,6 +1156,9 @@
       
       $terms[[2]]$keep_n
       [1] 1
+      
+      $terms[[2]]$explode
+      [1] "none"
       
       
       
@@ -709,6 +1191,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       $terms[[2]]
       $terms[[2]]$kind
@@ -732,6 +1217,9 @@
       $terms[[2]]$keep_n
       [1] NA
       
+      $terms[[2]]$explode
+      [1] "none"
+      
       
       $terms[[3]]
       $terms[[3]]$kind
@@ -754,6 +1242,9 @@
       
       $terms[[3]]$keep_n
       [1] NA
+      
+      $terms[[3]]$explode
+      [1] "none"
       
       
       
@@ -786,6 +1277,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       
 
@@ -816,6 +1310,9 @@
       
       $terms[[1]]$keep_n
       [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       
@@ -848,6 +1345,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       $terms[[2]]
       $terms[[2]]$kind
@@ -870,6 +1370,9 @@
       
       $terms[[2]]$keep_n
       [1] NA
+      
+      $terms[[2]]$explode
+      [1] "none"
       
       
       
@@ -901,6 +1404,9 @@
       
       $terms[[1]]$keep_n
       [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
       
       
       $terms[[2]]
@@ -941,6 +1447,9 @@
       $terms[[1]]$keep_n
       [1] 1
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       $terms[[2]]
       $terms[[2]]$kind
@@ -963,6 +1472,9 @@
       
       $terms[[2]]$keep_n
       [1] NA
+      
+      $terms[[2]]$explode
+      [1] "none"
       
       
       
@@ -1003,6 +1515,9 @@
       $terms[[2]]$keep_n
       [1] NA
       
+      $terms[[2]]$explode
+      [1] "none"
+      
       
       
 
@@ -1034,6 +1549,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       $terms[[2]]
       $terms[[2]]$kind
@@ -1056,6 +1574,9 @@
       
       $terms[[2]]$keep_n
       [1] NA
+      
+      $terms[[2]]$explode
+      [1] "none"
       
       
       
@@ -1088,6 +1609,9 @@
       $terms[[1]]$keep_n
       [1] NA
       
+      $terms[[1]]$explode
+      [1] "none"
+      
       
       $terms[[2]]
       $terms[[2]]$kind
@@ -1110,6 +1634,9 @@
       
       $terms[[2]]$keep_n
       [1] NA
+      
+      $terms[[2]]$explode
+      [1] "none"
       
       
       

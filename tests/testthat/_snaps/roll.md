@@ -180,6 +180,68 @@
       -6 | ######################################## 40
       
 
+# print.roll shows an exploding term's rerolls inline and its total (AC-6)
+
+    Code
+      print(roll("1d6!"))
+    Output
+      <roll> 1d6!
+      Dice:  6, 1
+      Total: 7
+
+# print.roll shows the kept per-die totals for a keep-selector exploding term (AC-6)
+
+    Code
+      print(roll("4d6!h3"))
+    Output
+      <roll> 4d6!h3
+      Dice:  6, 1, 2, 6, 4, 4
+      Kept:  10, 7, 4
+      Total: 21
+
+# compare prints a histogram over the capped range with the marked total for an exploding roll (AC-12)
+
+    Code
+      print(roll("2d6!", compare = TRUE))
+    Output
+      <roll> 2d6!
+      Dice:  6, 3, 2
+      Total: 11
+      
+      Distribution for 2d6!: this roll beats 75% of outcomes
+       2 | ########  8
+       3 | ################ 16
+       4 | ######################## 24
+       5 | ################################ 32
+       6 | ######################################## 40
+       7 | ################################ 32
+       8 | ########################### 27
+       9 | ##################### 21
+      10 | ################ 16
+      11 | ########### 11 <- this roll
+      12 | ############# 13
+      13 | ############# 13
+      14 | ########### 11
+      15 | ########  8
+      16 | ######  6
+      17 | ####  4
+      18 | #  1
+      19 | #  1
+      20 | #  1
+      21 | #  1
+      22 | #  1
+      23 | #  1
+      24 | #  1
+      
+
+# an explode-indefinitely die hitting the cap warns and still returns a valid roll (AC-7)
+
+    Code
+      result <- roll("1d6!!")
+    Condition
+      Warning:
+      An exploding die reached the reroll cap of 100 and its chain was truncated.
+
 # print.roll shows one Dice line per term and a grand total (AC-3)
 
     Code

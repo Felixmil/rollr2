@@ -157,6 +157,51 @@ test_that("plot.roll renders a wide range without axis clutter", {
   expect_lt(length(breaks), 20L)
 })
 
+test_that("plot.roll highlights an exploding roll over the capped range (AC-13)", {
+  # 2d6! spans the capped 2..24 range; the rolled total's bar is highlighted and
+  # its standing appears in the subtitle. Seed 20 rolls total 11.
+  r <- withr::with_seed(20, roll("2d6!"))
+  p <- plot(r)
+
+  expect_s3_class(p, "ggplot")
+  expect_equal(range(ggplot2::layer_data(p)$x), c(2, 24))
+
+  expected_percentile <- percentile_below(grand_total_pmf(r$terms), r$total)
+  expect_match(
+    p$labels$subtitle,
+    paste0("beats ", expected_percentile, "% of outcomes"),
+    fixed = TRUE
+  )
+  ld <- ggplot2::layer_data(p)
+  expect_equal(ld$x[ld$fill == "firebrick"], as.numeric(r$total))
+})
+
+test_that("plot.roll returns a valid ggplot over the huge explode-indefinitely range (AC-13)", {
+  # The `!!` range is enormous; assert the plot builds and its axis matches the
+  # capped bounds without over-asserting a per-outcome layout.
+  r <- withr::with_seed(20, roll("2d6!!"))
+  p <- plot(r)
+
+  expect_s3_class(p, "ggplot")
+  pmf <- grand_total_pmf(r$terms)
+  expect_equal(
+    range(ggplot2::layer_data(p)$x),
+    c(min(as.integer(names(pmf))), max(as.integer(names(pmf))))
+  )
+})
+
+test_that("plot.roll_distribution renders an exploding distribution over the capped range (AC-13)", {
+  d <- withr::with_seed(1, roll_distribution("2d6!", n = 1000))
+  p <- plot(d)
+
+  expect_s3_class(p, "ggplot")
+  # The distribution's range is the capped 2..24, and the axis breaks fall
+  # within it (rounded to a handful of round integers by pretty()).
+  expect_equal(d$range, c(2L, 24L))
+  breaks <- integer_axis_breaks(d$range)
+  expect_true(all(breaks >= 2 & breaks <= 24))
+})
+
 test_that("plot.roll_distribution handles a keep selector and a wide range", {
   p_keep <- plot(withr::with_seed(42, roll_distribution("4d6h3", n = 1000)))
   expect_s3_class(p_keep, "ggplot")
