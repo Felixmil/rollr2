@@ -80,8 +80,13 @@ integer constants, so each total is the grand total across all terms.</p>
 <code>NdX+M</code>, <code>NdX-M</code>, or the count-omitted <code>dX</code> variants (case-insensitive
 <code>d</code>, whitespace-tolerant), optionally with a keep selector <code>h</code>/<code>l</code> and an
 optional count after the die size (e.g. <code>2d20h</code>, <code>4d6h3</code>), keeping the
-highest/lowest <code>K</code> dice per roll (defaulting to <code>K = 1</code>). Several such
-terms, plus bare integer constants, may be joined with <code>+</code> or <code>-</code> into one
+highest/lowest <code>K</code> dice per roll (defaulting to <code>K = 1</code>). An explode marker
+may follow the die size, before any keep selector or modifier: <code>!</code> rerolls
+a maximum-face die once and sums both faces, <code>!!</code> rerolls while the maximum
+recurs, capped at 100 chained rerolls per die (e.g. <code>2d6!</code>, <code>2d6!!</code>,
+<code>4d6!h3</code>). Sampling is bounded by the same cap so it always terminates;
+<code>roll_distribution()</code> does not itself warn on the cap. Several such terms,
+plus bare integer constants, may be joined with <code>+</code> or <code>-</code> into one
 notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>); at least one dice term is
 required and each keep selector applies within its own term only.</p></dd>
 

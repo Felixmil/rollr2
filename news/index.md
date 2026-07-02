@@ -36,3 +36,16 @@
   They reject invalid notation, non-positive or non-integer die counts,
   die sizes below 2, keep counts of zero or exceeding the die count, and
   non-positive-integer repetition counts with clear errors.
+- Both functions gain an exploding-dice marker after the die size,
+  before any keep selector or modifier: `!` rerolls a maximum-face die
+  once and sums both faces (the extra die does not itself explode),
+  while `!!` keeps rerolling while the maximum recurs, capped at 100
+  chained rerolls per die (e.g. `2d6!`, `2d6!!`, `4d6!h3`, `2d6!+1`).
+  Each die explodes independently into a per-die total before any keep
+  selection.
+  [`roll()`](https://felixmil.github.io/rollr2/reference/roll.md) warns
+  once when a `!!` die reaches the cap; the exact outcome distribution
+  feeding `roll(compare = TRUE)` and both
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) methods is
+  depth-capped at the same cap and normalized to sum to 1, so it stays
+  finite and matches the sampler.

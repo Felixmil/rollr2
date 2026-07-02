@@ -29,10 +29,16 @@ plot(x, ...)
   `NdX-M`, or the count-omitted `dX` variants (case-insensitive `d`,
   whitespace-tolerant), optionally with a keep selector `h`/`l` and an
   optional count after the die size (e.g. `2d20h`, `4d6h3`), keeping the
-  highest/lowest `K` dice per roll (defaulting to `K = 1`). Several such
-  terms, plus bare integer constants, may be joined with `+` or `-` into
-  one notation (e.g. `1d20+1d6`, `2d20h+2d20l`); at least one dice term
-  is required and each keep selector applies within its own term only.
+  highest/lowest `K` dice per roll (defaulting to `K = 1`). An explode
+  marker may follow the die size, before any keep selector or modifier:
+  `!` rerolls a maximum-face die once and sums both faces, `!!` rerolls
+  while the maximum recurs, capped at 100 chained rerolls per die (e.g.
+  `2d6!`, `2d6!!`, `4d6!h3`). Sampling is bounded by the same cap so it
+  always terminates; `roll_distribution()` does not itself warn on the
+  cap. Several such terms, plus bare integer constants, may be joined
+  with `+` or `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`); at
+  least one dice term is required and each keep selector applies within
+  its own term only.
 
 - n:
 

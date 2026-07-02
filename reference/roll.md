@@ -30,10 +30,17 @@ plot(x, ...)
   whitespace-tolerant), optionally with a keep selector `h`/`l` and an
   optional count after the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`),
   which keeps the highest (`h`) or lowest (`l`) `K` dice (defaulting to
-  `K = 1`). Several such terms, plus bare integer constants, may be
-  joined with `+` or `-` into one notation (e.g. `1d20+1d6`,
-  `2d20h+2d20l`, `1d20+1d6+1d4+3`); at least one dice term is required
-  and each keep selector applies within its own term only. See
+  `K = 1`). An explode marker may follow the die size, before any keep
+  selector or modifier: `!` rerolls a maximum-face die exactly once and
+  sums the two faces (the extra die does not itself explode), while `!!`
+  keeps rerolling while the maximum recurs, capped at 100 chained
+  rerolls per die. So `2d6!`, `2d6!!`, `4d6!h3`, and `2d6!+1` are all
+  valid. When a `!!` die reaches the cap, `roll()` emits a warning while
+  still returning a valid roll. Several such terms, plus bare integer
+  constants, may be joined with `+` or `-` into one notation (e.g.
+  `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`); at least one dice term
+  is required and each keep selector applies within its own term only.
+  See
   [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)
   to summarise many rolls.
 
@@ -67,9 +74,11 @@ each term's kept dice in term order), `terms` (the per-term breakdown,
 each element a list with the term's parsed fields plus its `dice`,
 `kept`, and `subtotal`), the original `notation`, and `compare` (the
 logical flag controlling the print method). For a single-term notation
-the parsed components `n`, `x`, `m`, `keep`, `keep_n` are also present
-at the top level; they are omitted for a multi-term notation, where
-per-term access via `terms` is required.
+the parsed components `n`, `x`, `m`, `keep`, `keep_n`, `explode` are
+also present at the top level; they are omitted for a multi-term
+notation, where per-term access via `terms` is required. For an
+exploding term `dice` still lists every physical die including rerolls
+in draw order, and `kept` lists the kept per-die totals.
 
 ## Details
 
