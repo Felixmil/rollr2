@@ -31,6 +31,18 @@ of this conversation.
    `semi-auto`, `manual`, or the terminal action `merge`. If no mode
    word is given, default to `semi-auto` (but see step 4: a persisted
    mode wins for a resume). Reject any other mode word loudly.
+   - **Local issues.** An id starting with `L` (e.g. `L3`) is a **local
+     issue**: it has no GitHub issue, its description lives in
+     `<root>/<id>/issue.md` (created by the create-local-issue skill), and
+     it is driven exactly like a GitHub issue except for three things,
+     applied throughout this skill: (a) wherever you would read the issue
+     with `gh issue view`, instead read `<root>/<id>/issue.md`; (b) the
+     transition script already treats a local id as non-task and does no
+     `gh` call; (c) the build phase opens a PR that references the local
+     id in text rather than `Closes #N` (there is no GitHub issue to
+     close), and the linked PR is found by branch, not by a `Closes`
+     link (see Finding the linked PR). Everything else (state.json, the
+     four artifacts, modes, gates, resumability) is identical.
 2. **Derive the state root from git**, not from a hardcoded path:
    - Run `git rev-parse --show-toplevel` to get the repo's working tree
      root (an absolute path). Call its basename `<repo>` and its parent
@@ -87,10 +99,10 @@ transition script, see below):
 
 | Phase | Entry status | Agent | On success -> |
 | --- | --- | --- | --- |
-| spec  | `open` | `issue-agents:spec-writer-agent` | `spec-ready` |
-| plan  | `spec-ready` | `issue-agents:plan-writer-agent` | `ready-for-dev` |
-| build | `ready-for-dev`, `in-progress`, `blocked` | `issue-agents:build-runner-agent` | first `in-progress`, then `ai-review` |
-| qa    | `ai-review` | `issue-agents:qa-review-agent` | `human-review` (approved) or `in-progress` (rejected) |
+| spec  | `open` | `spec-writer-agent` | `spec-ready` |
+| plan  | `spec-ready` | `plan-writer-agent` | `ready-for-dev` |
+| build | `ready-for-dev`, `in-progress`, `blocked` | `build-runner-agent` | first `in-progress`, then `ai-review` |
+| qa    | `ai-review` | `qa-review-agent` | `human-review` (approved) or `in-progress` (rejected) |
 
 A `type:task`/`type:bug` issue may skip spec/plan: the transition script
 allows `open -> in-progress` and `spec-ready -> in-progress` only when
@@ -264,18 +276,26 @@ for approval even though no question was raised.
 
 ## Finding the linked PR
 
-The PR is the one GitHub considers linked to the issue (its body
-references it via `Closes #N`). Re-derive it fresh whenever you need it;
-never trust a stored `prNumber` over a fresh lookup:
+Re-derive the PR fresh whenever you need it; never trust a stored
+`prNumber` over a fresh lookup.
+
+For a **GitHub issue**, the PR is the one GitHub considers linked (its
+body references it via `Closes #N`):
 
 ```
 gh repo view --json owner,name --jq '.owner.login + " " + .name'
 gh api graphql -f query='query { repository(owner: "OWNER", name: "NAME") { issue(number: <issue>) { closedByPullRequestsReferences(first: 5) { nodes { number } } } } }'
 ```
 
-Take the first node's number, or none. Cache it into
-`state.json.prNumber` after a build, but always re-derive for QA and
-merge.
+For a **local issue** (id starts with `L`), the PR carries no `Closes`
+link, so find it by the branch the build agent worked on instead:
+
+```
+gh pr list --head "$(git rev-parse --abbrev-ref HEAD)" --state all --json number --jq '.[0].number'
+```
+
+Take the number, or none. Cache it into `state.json.prNumber` after a
+build, but always re-derive for QA and merge.
 
 ## Merge (terminal action, never automatic)
 

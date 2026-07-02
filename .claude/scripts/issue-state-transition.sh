@@ -60,8 +60,19 @@ fi
 # The type:task/type:bug signal is read from GitHub (read-only), exactly
 # as the label-based transition did: the skip-spec shortcut still reads
 # the type labels, and writes nothing back.
-is_task=$(gh issue view "$issue" --json labels \
-  --jq '[.labels[].name] | any(. == "type:task" or . == "type:bug")')
+#
+# A local issue (id starting with "L", e.g. L3) has no GitHub issue, so
+# the gh lookup would fail. Treat local issues as non-task (is_task=false):
+# the skip-spec shortcut is a GitHub-type-label feature and simply does
+# not apply to local issues, which always run the full spec -> plan path.
+# The gh call is skipped entirely so a local run needs no gh auth for the
+# transition step.
+if [[ "$issue" == L* ]]; then
+  is_task="false"
+else
+  is_task=$(gh issue view "$issue" --json labels \
+    --jq '[.labels[].name] | any(. == "type:task" or . == "type:bug")')
+fi
 
 # Transition table, transcribed verbatim from OpenDucktor's
 # status-transition-policy.ts (the same table the label-based transition

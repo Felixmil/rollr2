@@ -166,6 +166,22 @@ const bumpState = () => {
 const cacheBust = (prompt) =>
   `${prompt} (Reads current on-disk state; launch ${LAUNCH}, revision ${BUMP}. This trailing note does not change what to run.)`;
 
+// A local issue's id starts with "L" (e.g. L3). It has no GitHub issue:
+// its description lives in <dir>/issue.md, the pipeline reads that file
+// instead of `gh issue view`, and the build phase opens a PR that
+// references the id in text rather than closing a GitHub issue with
+// "Closes #N". A numeric id is a real GitHub issue and behaves as before.
+const isLocalId = (id) => /^L\d+$/.test(String(id));
+
+// The phrase handed to a phase agent for where to read the issue from,
+// and how to refer to it. For a GitHub issue: read it with gh. For a
+// local issue: read the local issue.md; there is no gh issue to view.
+function issueSourceInstruction(issue, dir) {
+  return isLocalId(issue)
+    ? `local issue ${issue} (read its description from the file ${dir}/issue.md; it has no GitHub issue)`
+    : `GitHub issue ${issue}`;
+}
+
 // The issues state root (a sibling of the checkout named <repo>.issues)
 // and the per-issue folder, derived from git so all worktrees of one
 // repo share one root. Returns absolute paths.
@@ -341,27 +357,32 @@ async function transitionTo(root, issue, to) {
   bumpState();
 }
 
-// The pull request GitHub considers linked to this issue (via Closes #N),
-// or null. Re-derived fresh every call, never trusted from a cache.
+// The pull request for this issue, or null. Re-derived fresh every call,
+// never trusted from a cache.
+//
+// For a GitHub issue, the PR is the one GitHub considers linked via
+// "Closes #N" (closedByPullRequestsReferences). A local issue has no
+// GitHub issue and its PR carries no "Closes" link, so instead find the
+// open PR whose head is the current branch (the branch the build agent
+// worked on and opened the PR from).
 async function findLinkedPr(issue) {
-  const out = await agent(
-    cacheBust(
-      `Run: gh repo view --json owner,name --jq '.owner.login + " " + .name'. Then run exactly: ` +
-        `gh api graphql -f query='query { repository(owner: "OWNER", name: "NAME") { issue(number: ${issue}) { ` +
-        `closedByPullRequestsReferences(first: 5) { nodes { number } } } } }' with OWNER and NAME substituted ` +
-        `from the first command. Set prNumber to the first node's number, or null if there are none.`,
-    ),
-    {
-      label: "find-linked-pr",
-      model: "haiku",
-      schema: {
-        type: "object",
-        additionalProperties: false,
-        required: ["prNumber"],
-        properties: { prNumber: { type: ["integer", "null"] } },
-      },
+  const prompt = isLocalId(issue)
+    ? `Run: gh pr list --head "$(git rev-parse --abbrev-ref HEAD)" --state all --json number --jq '.[0].number'. ` +
+      `Set prNumber to that number, or null if the output is empty.`
+    : `Run: gh repo view --json owner,name --jq '.owner.login + " " + .name'. Then run exactly: ` +
+      `gh api graphql -f query='query { repository(owner: "OWNER", name: "NAME") { issue(number: ${issue}) { ` +
+      `closedByPullRequestsReferences(first: 5) { nodes { number } } } } }' with OWNER and NAME substituted ` +
+      `from the first command. Set prNumber to the first node's number, or null if there are none.`;
+  const out = await agent(cacheBust(prompt), {
+    label: "find-linked-pr",
+    model: "haiku",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["prNumber"],
+      properties: { prNumber: { type: ["integer", "null"] } },
     },
-  );
+  });
   return typeof out?.prNumber === "number" ? out.prNumber : null;
 }
 
@@ -530,20 +551,28 @@ async function runPhaseAgent(issue, dir, def, { mode, answer, depPaths, prNumber
       `and write the final artifact.`
     : "";
 
+  const source = issueSourceInstruction(issue, dir);
+  const local = isLocalId(issue);
+  // A local issue has no GitHub issue to close, so the PR body references
+  // the id in text instead of "Closes #N".
+  const prBodyInstruction = local
+    ? `a clean, repo-facing body that states it implements local issue ${issue} (do NOT add a "Closes #" line; there is no GitHub issue)`
+    : `a clean, repo-facing body containing "Closes #${issue}"`;
+
   let task;
   if (def.key === "spec") {
-    task = `Read GitHub issue ${issue} and write its specification to the exact path ${artifactPath}.`;
+    task = `Read ${source} and write its specification to the exact path ${artifactPath}.`;
   } else if (def.key === "plan") {
-    task = `Read this issue's spec at ${dir}/spec.md and write the implementation plan for GitHub issue ${issue} to ${artifactPath}.`;
+    task = `Read this issue's spec at ${dir}/spec.md and write the implementation plan for ${source} to ${artifactPath}.`;
   } else if (def.key === "build") {
     task =
-      `Implement GitHub issue ${issue} per its spec (${dir}/spec.md) and plan (${dir}/plan.md). Open or update the ` +
-      `pull request with a clean, repo-facing body containing "Closes #${issue}". Then write the fuller build ` +
+      `Implement ${source} per its spec (${dir}/spec.md) and plan (${dir}/plan.md). Open or update the ` +
+      `pull request with ${prBodyInstruction}. Then write the fuller build ` +
       `summary to ${artifactPath}. Do not post any issue or pull request comment.`;
   } else {
     const prLine = prNumber ? ` The linked pull request is #${prNumber}.` : "";
     task =
-      `Review the pull request for GitHub issue ${issue} against ${dir}/spec.md and ${dir}/plan.md, and write ` +
+      `Review the pull request for ${source} against ${dir}/spec.md and ${dir}/plan.md, and write ` +
       `the QA report to ${artifactPath} ending in exactly one "QA-VERDICT: approved" or "QA-VERDICT: rejected" ` +
       `line.${prLine} Do not post any issue or pull request comment.`;
   }
@@ -560,9 +589,9 @@ async function runPhaseAgent(issue, dir, def, { mode, answer, depPaths, prNumber
 async function fixupBuild(issue, dir, buildDef, qaReportPath, feedback) {
   const extra = feedback ? ` Additional human feedback: ${feedback}` : "";
   return await agent(
-    `Read GitHub issue ${issue}. The QA report at ${qaReportPath} rejected the pull request. Address every ` +
-      `finding at its root cause against ${dir}/spec.md and ${dir}/plan.md, push to the same pull request branch, ` +
-      `rerun relevant verification, and update ${dir}/build.md. Do not post any pull request comment.${extra}`,
+    `Read ${issueSourceInstruction(issue, dir)}. The QA report at ${qaReportPath} rejected the pull request. ` +
+      `Address every finding at its root cause against ${dir}/spec.md and ${dir}/plan.md, push to the same pull ` +
+      `request branch, rerun relevant verification, and update ${dir}/build.md. Do not post any pull request comment.${extra}`,
     { agentType: buildDef.agentType, phase: "Build", schema: AGENT_SCHEMA },
   );
 }
@@ -571,8 +600,8 @@ async function fixupBuild(issue, dir, buildDef, qaReportPath, feedback) {
 // it runs on the cheaper model (matching the gh-posting workflow).
 async function reviseArtifact(issue, dir, def, feedback) {
   return await agent(
-    `Read GitHub issue ${issue}. A human requested changes to ${dir}/${def.artifact}: "${feedback}". Revise the ` +
-      `artifact in place at that path with the changes folded in. Return {"status":"done"}.`,
+    `For ${issueSourceInstruction(issue, dir)}, a human requested changes to ${dir}/${def.artifact}: "${feedback}". ` +
+      `Revise the artifact in place at that path with the changes folded in. Return {"status":"done"}.`,
     { agentType: def.agentType, phase: "Revise", model: "sonnet", schema: AGENT_SCHEMA },
   );
 }
