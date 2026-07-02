@@ -9,7 +9,7 @@ the modifier is still applied once to that kept sum.
 ## Usage
 
 ``` r
-roll(notation)
+roll(notation, compare = FALSE)
 
 # S3 method for class 'roll'
 print(x, ...)
@@ -28,6 +28,16 @@ print(x, ...)
   [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)
   to summarise many rolls.
 
+- compare:
+
+  A length-1 logical. When `TRUE`, printing the roll also shows where
+  the total sits within the notation's full theoretical outcome
+  distribution: a header line stating what percent of outcomes the roll
+  beats, then a text histogram of the exact outcome probabilities with
+  the rolled total's bar marked. Defaults to `FALSE`, which prints only
+  the roll itself. The comparison is computed, not sampled, so a given
+  (notation, total) pair always reports the same standing.
+
 - x:
 
   A `roll` object, as returned by `roll()`.
@@ -43,7 +53,8 @@ A `roll` object: a list with `dice` (integer vector of length `N`, each
 in `1..X`, listing every die rolled), `total` (integer scalar equal to
 the sum of the kept dice plus `M`), `kept` (the kept dice, equal to
 `dice` when there is no selector), the parsed components `n`, `x`, `m`,
-`keep`, `keep_n`, and the original `notation`.
+`keep`, `keep_n`, the original `notation`, and `compare` (the logical
+flag from the argument, controlling the print method).
 
 ## Examples
 
@@ -62,4 +73,22 @@ roll("4d6h3")
 #> Dice:  2, 5, 3, 6
 #> Kept:  6, 5, 3
 #> Total: 14
+roll("2d6", compare = TRUE)
+#> <roll> 2d6
+#> Dice:  2, 3
+#> Total: 5
+#> 
+#> Distribution for 2d6: this roll beats 17% of outcomes
+#>  2 | #######  7
+#>  3 | ############# 13
+#>  4 | #################### 20
+#>  5 | ########################### 27 <- this roll
+#>  6 | ################################# 33
+#>  7 | ######################################## 40
+#>  8 | ################################# 33
+#>  9 | ########################### 27
+#> 10 | #################### 20
+#> 11 | ############# 13
+#> 12 | #######  7
+#> 
 ```

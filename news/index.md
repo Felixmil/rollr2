@@ -5,6 +5,13 @@
 - [`roll()`](https://felixmil.github.io/rollr2/reference/roll.md) rolls
   a dice-notation string once, returning the individual die results and
   the total (sum of dice plus modifier).
+- [`roll()`](https://felixmil.github.io/rollr2/reference/roll.md) gains
+  a `compare` argument that, when `TRUE`, prints the notation’s full
+  outcome distribution as a text histogram with the rolled total’s bar
+  marked and a header stating what percent of outcomes the roll beats;
+  the standing is computed exactly (never sampled), so it is the same
+  for a given notation and total across sessions. Defaults to `FALSE`,
+  leaving existing output unchanged.
 - [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)
   rolls a dice-notation string many times and summarises the
   distribution of totals, printing counts per outcome and a text
