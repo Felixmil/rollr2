@@ -1,6 +1,6 @@
 ---
-name: issue-pipeline
-description: Drives one GitHub issue through spec -> plan -> build -> QA, keeping the four artifacts and the state machine on the local filesystem under <repo>.issues/<issue>/ and all human interaction inline in this session. The GitHub issue is the input; a pull request is the ship channel; nothing is posted to the issue thread. Use when the user says "run the issue pipeline on N", "drive issue N through the pipeline", passes a mode (auto/semi-auto/manual/merge), or invokes /issue-pipeline with an issue number.
+name: file-pipeline
+description: Drives one GitHub issue through spec -> plan -> build -> QA, keeping the four artifacts and the state machine on the local filesystem under <repo>.issues/<issue>/ and all human interaction inline in this session. The GitHub issue is the input; a pull request is the ship channel; nothing is posted to the issue thread. Use when the user says "run the file pipeline on N", "drive issue N through the pipeline", passes a mode (auto/semi-auto/manual/merge), or invokes /file-pipeline with an issue number.
 ---
 
 # Issue pipeline
@@ -87,10 +87,10 @@ transition script, see below):
 
 | Phase | Entry status | Agent | On success -> |
 | --- | --- | --- | --- |
-| spec  | `open` | `spec-writer-agent` | `spec-ready` |
-| plan  | `spec-ready` | `plan-writer-agent` | `ready-for-dev` |
-| build | `ready-for-dev`, `in-progress`, `blocked` | `build-runner-agent` | first `in-progress`, then `ai-review` |
-| qa    | `ai-review` | `qa-review-agent` | `human-review` (approved) or `in-progress` (rejected) |
+| spec  | `open` | `issue-agents:spec-writer-agent` | `spec-ready` |
+| plan  | `spec-ready` | `issue-agents:plan-writer-agent` | `ready-for-dev` |
+| build | `ready-for-dev`, `in-progress`, `blocked` | `issue-agents:build-runner-agent` | first `in-progress`, then `ai-review` |
+| qa    | `ai-review` | `issue-agents:qa-review-agent` | `human-review` (approved) or `in-progress` (rejected) |
 
 A `type:task`/`type:bug` issue may skip spec/plan: the transition script
 allows `open -> in-progress` and `spec-ready -> in-progress` only when
@@ -317,7 +317,7 @@ merge.
   line in `qa.md`.
 - Launching multiple issues from here. This skill drives exactly one
   issue; a fleet is several independent background sessions, each its
-  own `/issue-pipeline` run.
+  own `/file-pipeline` run.
 
 ## Done criteria
 
