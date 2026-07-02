@@ -326,17 +326,30 @@ grand_total_pmf <- function(terms) {
       term_offset <- -(hi + term$m)
     }
 
-    # Convolve the running weight vector with this term's. `stats::convolve(...,
-    # type = "open")` multiplies the two as polynomials, giving a vector whose
-    # length is the sum of the spans (additive growth), never the product of
-    # the dice spaces.
-    counts <- convolve(counts, rev(tc), type = "open")
+    # Convolve the running weight vector with this term's. `conv_open()`
+    # multiplies the two as polynomials, giving a vector whose length is the sum
+    # of the spans (additive growth), never the product of the dice spaces.
+    counts <- conv_open(counts, tc)
     offset <- offset + term_offset
   }
 
   probs <- counts / sum(counts)
   names(probs) <- offset + seq_along(probs) - 1L
   probs
+}
+
+# Open (polynomial) convolution of two non-negative vectors, with FFT round-off
+# clamped away. `stats::convolve()` computes the convolution through the FFT, so
+# entries whose exact value is zero (impossible outcomes) come back as tiny
+# numbers that may land just below zero, and the sign of that round-off differs
+# across platforms. Both inputs here are non-negative (dice counts or
+# probabilities), so the true convolution is non-negative; clamping the
+# sub-epsilon negatives to zero removes the platform-dependent noise without
+# touching any genuine mass.
+conv_open <- function(a, b) {
+  out <- convolve(a, rev(b), type = "open")
+  out[out < 0] <- 0
+  out
 }
 
 # Total probability mass of outcomes strictly below `total`, as a whole
@@ -463,7 +476,7 @@ explode_kept_sum_probs <- function(n, x, explode, keep, keep_n) {
     acc <- die
     if (n >= 2L) {
       for (i in seq_len(n - 1L)) {
-        acc <- convolve(acc, rev(die), type = "open")
+        acc <- conv_open(acc, die)
       }
     }
     return(acc)
