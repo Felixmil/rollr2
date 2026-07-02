@@ -138,8 +138,10 @@ print.roll <- function(x, ...) {
 #' @export
 plot.roll <- function(x, ...) {
   # Same exact-PMF source the print path uses (comparison_block()), so the
-  # plotted standing matches the printed one byte for byte. Consumes no RNG.
-  pmf <- outcome_pmf(x$n, x$x, x$m, x$keep, x$keep_n)
+  # plotted standing matches the printed one byte for byte. Built from the
+  # per-term structure so it works for both single- and multi-term rolls (the
+  # flat `$n/$x/...` fields are omitted for multi-term). Consumes no RNG.
+  pmf <- grand_total_pmf(x$terms)
   percentile <- percentile_below(pmf, x$total)
 
   totals <- as.integer(names(pmf))
