@@ -8,7 +8,7 @@ test_that("a single roll returns dice in range and a consistent total", {
 })
 
 test_that("a single die single roll yields one result equal to the total minus modifier", {
-  withr::local_seed(1)
+  withr::local_seed(42)
   result <- roll("1d6")
 
   expect_length(result$dice, 1L)
@@ -16,7 +16,7 @@ test_that("a single die single roll yields one result equal to the total minus m
 })
 
 test_that("a large negative modifier is not floored", {
-  withr::local_seed(1)
+  withr::local_seed(42)
   result <- roll("1d4-10")
 
   expect_equal(result$total, result$dice - 10L)
@@ -24,8 +24,8 @@ test_that("a large negative modifier is not floored", {
 })
 
 test_that("rolls are reproducible under a fixed seed", {
-  first <- withr::with_seed(123, roll("2d20+2"))
-  second <- withr::with_seed(123, roll("2d20+2"))
+  first <- withr::with_seed(42, roll("2d20+2"))
+  second <- withr::with_seed(42, roll("2d20+2"))
 
   expect_equal(first$dice, second$dice)
   expect_equal(first$total, second$total)
@@ -44,19 +44,19 @@ test_that("keep-highest and keep-lowest select a single die for the total", {
 })
 
 test_that("an explicit keep count sums the chosen highest or lowest dice", {
-  withr::local_seed(11)
+  withr::local_seed(42)
   high <- roll("4d6h3")
   expect_length(high$dice, 4L)
   expect_equal(high$total, sum(sort(high$dice, decreasing = TRUE)[1:3]))
 
-  withr::local_seed(11)
+  withr::local_seed(42)
   low <- roll("3d6l2")
   expect_length(low$dice, 3L)
   expect_equal(low$total, sum(sort(low$dice)[1:2]))
 })
 
 test_that("the modifier applies once to the kept sum", {
-  withr::local_seed(5)
+  withr::local_seed(42)
   result <- roll("4d6h3+2")
   expect_equal(
     result$total,
@@ -65,26 +65,26 @@ test_that("the modifier applies once to the kept sum", {
 })
 
 test_that("keeping all dice equals the plain roll under the same seed", {
-  keep_all <- withr::with_seed(23, roll("2d6h2"))
-  plain <- withr::with_seed(23, roll("2d6"))
+  keep_all <- withr::with_seed(42, roll("2d6h2"))
+  plain <- withr::with_seed(42, roll("2d6"))
   expect_equal(keep_all$dice, plain$dice)
   expect_equal(keep_all$total, plain$total)
 })
 
 test_that("selector rolls are reproducible under a fixed seed", {
-  first <- withr::with_seed(77, roll("4d6h3"))
-  second <- withr::with_seed(77, roll("4d6h3"))
+  first <- withr::with_seed(42, roll("4d6h3"))
+  second <- withr::with_seed(42, roll("4d6h3"))
   expect_equal(first$dice, second$dice)
   expect_equal(first$total, second$total)
 })
 
 test_that("print.roll renders notation, dice, and total", {
-  withr::local_seed(7)
+  withr::local_seed(42)
   expect_snapshot(print(roll("2d20+2")))
 })
 
 test_that("print.roll shows the kept dice when a selector is present", {
-  withr::local_seed(7)
+  withr::local_seed(42)
   expect_snapshot(print(roll("4d6h3")))
 })
 
@@ -93,7 +93,7 @@ test_that("roll surfaces parse errors", {
 })
 
 test_that("compare defaults to FALSE and leaves the object and print unchanged", {
-  withr::local_seed(7)
+  withr::local_seed(42)
   result <- roll("2d20+2")
 
   expect_false(result$compare)
@@ -108,36 +108,60 @@ test_that("a non-logical compare flag is rejected", {
 })
 
 test_that("print.roll with compare shows the distribution and the marked total", {
-  # Seed 20 rolls a mid-high total (9) on 2d6, so the percentile is non-trivial
-  # and the marked bar sits inside the histogram, not at an extreme.
-  withr::local_seed(20)
-  expect_snapshot(print(roll("2d6", compare = TRUE)))
+  # A mid-high total (9) on 2d6 gives a non-trivial percentile with the marked
+  # bar inside the histogram, not at an extreme. Construct the total directly so
+  # the case is deterministic rather than seed-dependent.
+  withr::local_seed(42)
+  r <- roll("2d6", compare = TRUE)
+  r$terms[[1]]$dice <- c(6L, 3L)
+  r$terms[[1]]$kept <- c(6L, 3L)
+  r$terms[[1]]$subtotal <- 9L
+  r$total <- 9L
+  expect_snapshot(print(r))
 })
 
 test_that("compare follows a keep-highest selector's range and shape", {
-  withr::local_seed(9)
+  withr::local_seed(42)
   expect_snapshot(print(roll("4d6h3", compare = TRUE)))
 })
 
 test_that("compare against a skewed keep-highest distribution is probability-weighted", {
   # 2d20h at total 11: the probability mass strictly below 11 (25%) diverges
   # from the unweighted count of distinct outcomes below 11 (50%). The header
-  # must report the weighted reading.
-  withr::local_seed(5)
-  expect_snapshot(print(roll("2d20h", compare = TRUE)))
+  # must report the weighted reading. Construct the total directly so the case
+  # does not depend on the RNG seed.
+  withr::local_seed(42)
+  r <- roll("2d20h", compare = TRUE)
+  r$terms[[1]]$dice <- c(2L, 11L)
+  r$terms[[1]]$kept <- 11L
+  r$terms[[1]]$subtotal <- 11L
+  r$total <- 11L
+  expect_snapshot(print(r))
 })
 
 test_that("compare follows a shifted range under a negative modifier", {
-  # Seed 4 rolls the maximum total (-6) on 1d4-10, so the marked bar is the
-  # top of the shifted range and the standing is the mass strictly below it.
-  withr::local_seed(4)
-  expect_snapshot(print(roll("1d4-10", compare = TRUE)))
+  # The maximum total (-6) on 1d4-10 puts the marked bar at the top of the
+  # shifted range; the standing is the mass strictly below it. Force the maximum
+  # face directly instead of relying on a specific seed.
+  withr::local_seed(42)
+  r <- roll("1d4-10", compare = TRUE)
+  r$terms[[1]]$dice <- 4L
+  r$terms[[1]]$kept <- 4L
+  r$terms[[1]]$subtotal <- -6L
+  r$total <- -6L
+  expect_snapshot(print(r))
 })
 
 test_that("rolling the minimum total reports a 0% standing", {
-  # Seed 1 rolls the minimum total (-9) on 1d4-10: nothing is strictly below it.
-  withr::local_seed(1)
-  expect_snapshot(print(roll("1d4-10", compare = TRUE)))
+  # The minimum total (-9) on 1d4-10 has nothing strictly below it, so the
+  # standing is 0%. Force the minimum face directly instead of via a seed.
+  withr::local_seed(42)
+  r <- roll("1d4-10", compare = TRUE)
+  r$terms[[1]]$dice <- 1L
+  r$terms[[1]]$kept <- 1L
+  r$terms[[1]]$subtotal <- -9L
+  r$total <- -9L
+  expect_snapshot(print(r))
 })
 
 test_that("the reported standing is deterministic for a given notation and total", {
@@ -154,7 +178,6 @@ test_that("the reported standing is deterministic for a given notation and total
 test_that("a wide-range comparison stays complete and finite", {
   # 10d100 spans 991 outcomes; the block must cover every outcome (one line
   # each) plus the header, and remain fast (no x^n enumeration).
-  withr::local_seed(1)
   block <- comparison_block(roll("10d100", compare = TRUE))
 
   expect_length(block, 992L)
@@ -174,7 +197,7 @@ test_that("a multi-term roll totals every term's contribution (AC-2)", {
 })
 
 test_that("flat dice and kept concatenate every term in order", {
-  withr::local_seed(7)
+  withr::local_seed(42)
   result <- roll("2d20h+2d20l")
 
   expect_equal(
@@ -191,7 +214,7 @@ test_that("flat dice and kept concatenate every term in order", {
 })
 
 test_that("a negated term subtracts its contribution", {
-  withr::local_seed(3)
+  withr::local_seed(42)
   result <- roll("2d20h-1d6")
 
   high <- max(result$terms[[1]]$dice)
@@ -203,38 +226,38 @@ test_that("a negated term subtracts its contribution", {
 test_that("a constant term consumes no RNG so the dice stream is unchanged", {
   # A leading constant must not shift the RNG stream: the dice drawn for the
   # dice term match a bare roll of that term under the same seed.
-  with_const <- withr::with_seed(1, roll("3+2d6"))
-  plain <- withr::with_seed(1, roll("2d6"))
+  with_const <- withr::with_seed(42, roll("3+2d6"))
+  plain <- withr::with_seed(42, roll("2d6"))
   expect_equal(with_const$terms[[2]]$dice, plain$dice)
   expect_equal(with_const$total, plain$total + 3L)
 })
 
 test_that("multi-term rolls are reproducible under a fixed seed", {
-  first <- withr::with_seed(123, roll("1d20+1d6+3"))
-  second <- withr::with_seed(123, roll("1d20+1d6+3"))
+  first <- withr::with_seed(42, roll("1d20+1d6+3"))
+  second <- withr::with_seed(42, roll("1d20+1d6+3"))
   expect_equal(first$dice, second$dice)
   expect_equal(first$total, second$total)
 })
 
 test_that("print.roll shows one Dice line per term and a grand total (AC-3)", {
-  withr::local_seed(7)
+  withr::local_seed(42)
   expect_snapshot(print(roll("1d20+1d6+1d4+3")))
 })
 
 test_that("print.roll groups a Kept line under each selector term", {
-  withr::local_seed(7)
+  withr::local_seed(42)
   expect_snapshot(print(roll("2d20h+2d20l")))
 })
 
 test_that("compare works for a multi-term keep notation (AC-5)", {
-  withr::local_seed(5)
+  withr::local_seed(42)
   expect_snapshot(print(roll("2d20h+2d20l", compare = TRUE)))
 })
 
 test_that("compare places the marked bar across a negative-capable range", {
   # 2d20h-1d6 spans a range that dips below zero; the marked bar must land
   # correctly within it.
-  withr::local_seed(3)
+  withr::local_seed(42)
   expect_snapshot(print(roll("2d20h-1d6", compare = TRUE)))
 })
 
@@ -247,7 +270,7 @@ test_that("a multi-term compare PMF sums to 1 over the full range", {
 test_that("the multi-term standing is deterministic and seed-independent", {
   # The standing is a pure function of (terms, total): a concrete, repeatable
   # value, and identical no matter what RNG seed is active when it is computed.
-  under_first_seed <- withr::with_seed(1, {
+  under_first_seed <- withr::with_seed(42, {
     pmf <- grand_total_pmf(parse_notation("2d20h+2d20l")$terms)
     percentile_below(pmf, 25L)
   })
@@ -264,7 +287,6 @@ test_that("a wide multi-term comparison stays complete and finite (AC-7)", {
   # 10d100+10d100 spans 1981 outcomes (200..2000); the block must cover every
   # outcome plus the header and return without enumerating the joint dice
   # space (convolution of per-term count vectors only).
-  withr::local_seed(1)
   block <- comparison_block(roll("10d100+10d100", compare = TRUE))
 
   expect_length(block, 1982L)

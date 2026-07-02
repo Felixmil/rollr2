@@ -4,8 +4,8 @@
       print(roll("2d20+2"))
     Output
       <roll> 2d20+2
-      Dice:  10, 19
-      Total: 31
+      Dice:  17, 5
+      Total: 24
 
 # print.roll shows the kept dice when a selector is present
 
@@ -13,9 +13,9 @@
       print(roll("4d6h3"))
     Output
       <roll> 4d6h3
-      Dice:  2, 3, 4, 2
-      Kept:  4, 3, 2
-      Total: 9
+      Dice:  1, 5, 1, 1
+      Kept:  5, 1, 1
+      Total: 7
 
 # roll surfaces parse errors
 
@@ -33,8 +33,8 @@
       print(result)
     Output
       <roll> 2d20+2
-      Dice:  10, 19
-      Total: 31
+      Dice:  17, 5
+      Total: 24
 
 # a non-logical compare flag is rejected
 
@@ -66,7 +66,7 @@
 # print.roll with compare shows the distribution and the marked total
 
     Code
-      print(roll("2d6", compare = TRUE))
+      print(r)
     Output
       <roll> 2d6
       Dice:  6, 3
@@ -92,23 +92,23 @@
       print(roll("4d6h3", compare = TRUE))
     Output
       <roll> 4d6h3
-      Dice:  3, 5, 6, 3
-      Kept:  6, 5, 3
-      Total: 14
+      Dice:  1, 5, 1, 1
+      Kept:  5, 1, 1
+      Total: 7
       
-      Distribution for 4d6h3: this roll beats 65% of outcomes
+      Distribution for 4d6h3: this roll beats 3% of outcomes
        3 | #  1
        4 | #  1
        5 | ##  2
        6 | #####  5
-       7 | #########  9
+       7 | #########  9 <- this roll
        8 | ############## 14
        9 | ##################### 21
       10 | ############################ 28
       11 | ################################## 34
       12 | ####################################### 39
       13 | ######################################## 40
-      14 | ##################################### 37 <- this roll
+      14 | ##################################### 37
       15 | ############################## 30
       16 | ###################### 22
       17 | ############# 13
@@ -118,7 +118,7 @@
 # compare against a skewed keep-highest distribution is probability-weighted
 
     Code
-      print(roll("2d20h", compare = TRUE))
+      print(r)
     Output
       <roll> 2d20h
       Dice:  2, 11
@@ -151,7 +151,7 @@
 # compare follows a shifted range under a negative modifier
 
     Code
-      print(roll("1d4-10", compare = TRUE))
+      print(r)
     Output
       <roll> 1d4-10
       Dice:  4
@@ -167,7 +167,7 @@
 # rolling the minimum total reports a 0% standing
 
     Code
-      print(roll("1d4-10", compare = TRUE))
+      print(r)
     Output
       <roll> 1d4-10
       Dice:  1
@@ -186,10 +186,10 @@
       print(roll("1d20+1d6+1d4+3"))
     Output
       <roll> 1d20+1d6+1d4+3
-      Dice:  10
-      Dice:  3
-      Dice:  3
-      Total: 19
+      Dice:  17
+      Dice:  5
+      Dice:  1
+      Total: 26
 
 # print.roll groups a Kept line under each selector term
 
@@ -197,11 +197,11 @@
       print(roll("2d20h+2d20l"))
     Output
       <roll> 2d20h+2d20l
-      Dice:  10, 19
-      Kept:  19
-      Dice:  7, 2
-      Kept:  2
-      Total: 21
+      Dice:  17, 5
+      Kept:  17
+      Dice:  1, 10
+      Kept:  1
+      Total: 18
 
 # compare works for a multi-term keep notation (AC-5)
 
@@ -209,13 +209,13 @@
       print(roll("2d20h+2d20l", compare = TRUE))
     Output
       <roll> 2d20h+2d20l
-      Dice:  2, 11
-      Kept:  11
-      Dice:  15, 11
-      Kept:  11
-      Total: 22
+      Dice:  17, 5
+      Kept:  17
+      Dice:  1, 10
+      Kept:  1
+      Total: 18
       
-      Distribution for 2d20h+2d20l: this roll beats 53% of outcomes
+      Distribution for 2d20h+2d20l: this roll beats 30% of outcomes
        2 | #  1
        3 | #  1
        4 | #  1
@@ -232,11 +232,11 @@
       15 | ####################### 23
       16 | ######################### 25
       17 | ############################ 28
-      18 | ############################### 31
+      18 | ############################### 31 <- this roll
       19 | ################################## 34
       20 | ##################################### 37
       21 | ######################################## 40
-      22 | ##################################### 37 <- this roll
+      22 | ##################################### 37
       23 | ################################## 34
       24 | ############################### 31
       25 | ############################ 28
@@ -263,12 +263,12 @@
       print(roll("2d20h-1d6", compare = TRUE))
     Output
       <roll> 2d20h-1d6
-      Dice:  5, 12
-      Kept:  12
-      Dice:  4
-      Total: 8
+      Dice:  17, 5
+      Kept:  17
+      Dice:  1
+      Total: 16
       
-      Distribution for 2d20h-1d6: this roll beats 28% of outcomes
+      Distribution for 2d20h-1d6: this roll beats 85% of outcomes
       -5 | #  1
       -4 | #  1
       -3 | ##  2
@@ -282,7 +282,7 @@
        5 | ################### 19
        6 | ##################### 21
        7 | ######################## 24
-       8 | ########################## 26 <- this roll
+       8 | ########################## 26
        9 | ############################ 28
       10 | ############################### 31
       11 | ################################# 33
@@ -290,7 +290,7 @@
       13 | ###################################### 38
       14 | ######################################## 40
       15 | ################################## 34
-      16 | ############################ 28
+      16 | ############################ 28 <- this roll
       17 | ###################### 22
       18 | ############### 15
       19 | ########  8

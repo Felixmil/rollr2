@@ -1,5 +1,5 @@
 test_that("plot.roll_distribution returns a themed ggplot over the full range", {
-  withr::local_seed(1)
+  withr::local_seed(42)
   p <- plot(roll_distribution("2d6", n = 1000))
 
   expect_s3_class(p, "ggplot")
@@ -19,7 +19,7 @@ test_that("plot.roll_distribution returns a themed ggplot over the full range", 
 })
 
 test_that("plot.roll returns a ggplot spanning the exact PMF range", {
-  withr::local_seed(7)
+  withr::local_seed(42)
   p <- plot(roll("2d6"))
 
   expect_s3_class(p, "ggplot")
@@ -32,7 +32,7 @@ test_that("plot.roll returns a ggplot spanning the exact PMF range", {
 })
 
 test_that("plot.roll highlights the rolled total and reports its standing", {
-  r <- withr::with_seed(7, roll("2d6"))
+  r <- withr::with_seed(42, roll("2d6"))
 
   expected_percentile <- percentile_below(
     outcome_pmf(2L, 6L, 0L, NA_character_, NA_integer_),
@@ -55,8 +55,8 @@ test_that("plot.roll highlights the rolled total and reports its standing", {
 })
 
 test_that("plot.roll ignores the compare flag", {
-  with_compare <- withr::with_seed(7, roll("2d6", compare = TRUE))
-  without_compare <- withr::with_seed(7, roll("2d6", compare = FALSE))
+  with_compare <- withr::with_seed(42, roll("2d6", compare = TRUE))
+  without_compare <- withr::with_seed(42, roll("2d6", compare = FALSE))
 
   p_true <- plot(with_compare)
   p_false <- plot(without_compare)
@@ -67,7 +67,7 @@ test_that("plot.roll ignores the compare flag", {
 })
 
 test_that("plot.roll is deterministic and consumes no RNG", {
-  r <- withr::with_seed(7, roll("2d6"))
+  r <- withr::with_seed(42, roll("2d6"))
 
   # Calling twice without a seed reads the stored components and computes the
   # exact PMF, so the plotted data is identical (C-5).
@@ -77,7 +77,7 @@ test_that("plot.roll is deterministic and consumes no RNG", {
 })
 
 test_that("plot.roll handles a keep selector", {
-  r <- withr::with_seed(3, roll("4d6h3"))
+  r <- withr::with_seed(42, roll("4d6h3"))
   p <- plot(r)
 
   expect_s3_class(p, "ggplot")
@@ -87,7 +87,7 @@ test_that("plot.roll handles a keep selector", {
 
 test_that("plot.roll handles a negative, shifted range", {
   # 1d4-10 ranges from -9 to -6 (EC-3).
-  r <- withr::with_seed(5, roll("1d4-10"))
+  r <- withr::with_seed(42, roll("1d4-10"))
   p <- plot(r)
 
   expect_s3_class(p, "ggplot")
@@ -98,7 +98,7 @@ test_that("plot.roll works on a multi-term notation", {
   # Multi-term rolls omit the flat `$n/$x/$m/$keep/$keep_n` fields, so the plot
   # must source its PMF from the per-term structure (`grand_total_pmf()`), the
   # same source the compare print path uses.
-  r <- withr::with_seed(4, roll("1d20+1d6+3"))
+  r <- withr::with_seed(42, roll("1d20+1d6+3"))
   p <- plot(r)
 
   expect_s3_class(p, "ggplot")
@@ -124,7 +124,7 @@ test_that("plot.roll works on a multi-term notation", {
 test_that("plot.roll handles a negated multi-term notation", {
   # 2d20h-2d20l can go negative (largest single d20 minus smallest single d20),
   # ranging from -19 (1-20) to 19 (20-1). Exercises the negated-term PMF path.
-  r <- withr::with_seed(8, roll("2d20h-2d20l"))
+  r <- withr::with_seed(42, roll("2d20h-2d20l"))
   p <- plot(r)
 
   expect_s3_class(p, "ggplot")
@@ -132,10 +132,9 @@ test_that("plot.roll handles a negated multi-term notation", {
 })
 
 test_that("plot.roll reports 0% standing when the total is the minimum", {
-  # Force the minimum roll on 1d4 (all faces equally likely; seed chosen so the
-  # total is the range minimum, verified below).
-  r <- withr::with_seed(2, roll("2d6"))
-  # Build a roll whose total is the range minimum by picking the minimum face.
+  # Construct a 2d6 roll whose total is the range minimum (2) directly, so the
+  # 0% standing does not depend on the RNG seed.
+  r <- withr::with_seed(42, roll("2d6"))
   r_min <- r
   r_min$total <- 2L
   p <- plot(r_min)
@@ -146,7 +145,7 @@ test_that("plot.roll reports 0% standing when the total is the minimum", {
 })
 
 test_that("plot.roll renders a wide range without axis clutter", {
-  r <- withr::with_seed(9, roll("10d100"))
+  r <- withr::with_seed(42, roll("10d100"))
   p <- plot(r)
 
   expect_s3_class(p, "ggplot")
@@ -159,10 +158,10 @@ test_that("plot.roll renders a wide range without axis clutter", {
 })
 
 test_that("plot.roll_distribution handles a keep selector and a wide range", {
-  p_keep <- plot(withr::with_seed(11, roll_distribution("4d6h3", n = 1000)))
+  p_keep <- plot(withr::with_seed(42, roll_distribution("4d6h3", n = 1000)))
   expect_s3_class(p_keep, "ggplot")
 
-  p_wide <- plot(withr::with_seed(12, roll_distribution("10d100", n = 2000)))
+  p_wide <- plot(withr::with_seed(42, roll_distribution("10d100", n = 2000)))
   expect_s3_class(p_wide, "ggplot")
 })
 
