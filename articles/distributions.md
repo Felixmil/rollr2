@@ -30,7 +30,7 @@ six-sided dice give the familiar triangular distribution, peaking at 7.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 d <- roll_distribution("2d6", n = 10000)
 plot(d)
 ```
@@ -49,7 +49,7 @@ theoretical distribution, whether or not the roll was created with
 
 ``` r
 
-set.seed(7)
+set.seed(42)
 plot(roll("2d6"))
 ```
 
@@ -87,7 +87,7 @@ subtitle.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 p <- plot(roll_distribution("2d6", n = 10000))
 p +
   geom_col(fill = "darkorange") +
@@ -105,7 +105,7 @@ wider range than either die alone.
 
 ``` r
 
-set.seed(7)
+set.seed(42)
 plot(roll_distribution("1d20+1d6", n = 20000))
 ```
 

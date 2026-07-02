@@ -24,12 +24,12 @@ the notation, the individual dice, and the adjusted total.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 r <- roll("2d20+2")
 r
 #> <roll> 2d20+2
-#> Dice:  4, 7
-#> Total: 13
+#> Dice:  17, 5
+#> Total: 24
 ```
 
 A `roll` object is a list. The three fields you will use most are:
@@ -48,11 +48,11 @@ the concatenation across terms.
 ``` r
 
 r$dice
-#> [1] 4 7
+#> [1] 17  5
 r$kept
-#> [1] 4 7
+#> [1] 17  5
 r$total
-#> [1] 13
+#> [1] 24
 ```
 
 When the notation carries a keep selector, `kept` is a subset of `dice`
@@ -61,18 +61,18 @@ dice and keeps the highest three.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 kept_roll <- roll("4d6h3")
 kept_roll
 #> <roll> 4d6h3
-#> Dice:  1, 4, 1, 2
-#> Kept:  4, 2, 1
+#> Dice:  1, 5, 1, 1
+#> Kept:  5, 1, 1
 #> Total: 7
 
 kept_roll$dice
-#> [1] 1 4 1 2
+#> [1] 1 5 1 1
 kept_roll$kept
-#> [1] 4 2 1
+#> [1] 5 1 1
 kept_roll$total
 #> [1] 7
 ```
@@ -88,13 +88,13 @@ no keep across the whole expression.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 mixed <- roll("1d20+1d6+3")
 mixed
 #> <roll> 1d20+1d6+3
-#> Dice:  4
-#> Dice:  1
-#> Total: 8
+#> Dice:  17
+#> Dice:  5
+#> Total: 25
 ```
 
 The printout shows one `Dice:` line per dice term and a single grand
@@ -103,11 +103,11 @@ The printout shows one `Dice:` line per dice term and a single grand
 ``` r
 
 mixed$total
-#> [1] 8
+#> [1] 25
 mixed$terms[[1]]$subtotal
-#> [1] 4
+#> [1] 17
 mixed$terms[[2]]$subtotal
-#> [1] 4
+#> [1] 8
 ```
 
 A `-` before a term subtracts it, and a keep selector still applies
@@ -116,14 +116,14 @@ or `2d20h-1d6`.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 roll("2d20h+2d20l")
 #> <roll> 2d20h+2d20l
-#> Dice:  4, 7
-#> Kept:  7
-#> Dice:  1, 2
+#> Dice:  17, 5
+#> Kept:  17
+#> Dice:  1, 10
 #> Kept:  1
-#> Total: 8
+#> Total: 18
 ```
 
 ## Summarise many rolls
@@ -135,22 +135,22 @@ observed outcome, and a text histogram.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 roll_distribution("2d6", n = 1000)
 #> <roll_distribution> 2d6
 #> Rolls: 1000  Possible total range: 2 to 12
 #> 
-#>  2 | #######  28
-#>  3 | ############  50
-#>  4 | ###################  79
-#>  5 | ########################### 112
-#>  6 | ################################### 148
-#>  7 | ######################################## 167
-#>  8 | #################################### 150
-#>  9 | ######################### 105
-#> 10 | ####################  82
-#> 11 | ##############  58
-#> 12 | #####  21
+#>  2 | #####  24
+#>  3 | ###############  65
+#>  4 | ####################  91
+#>  5 | ####################### 104
+#>  6 | ################################### 155
+#>  7 | ######################################## 178
+#>  8 | ############################ 126
+#>  9 | ########################### 118
+#> 10 | #################  77
+#> 11 | #########  38
+#> 12 | #####  24
 ```
 
 The returned `roll_distribution` object stores the observed totals in
@@ -163,7 +163,7 @@ The returned `roll_distribution` object stores the observed totals in
 d <- roll_distribution("2d6", n = 1000)
 d$counts
 #>   2   3   4   5   6   7   8   9  10  11  12 
-#>  22  60  81 102 130 170 135 120  95  56  29
+#>  21  49  68 115 160 161 148 102  97  55  24
 d$range
 #> [1]  2 12
 ```

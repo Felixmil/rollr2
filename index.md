@@ -26,11 +26,11 @@ seed when you want reproducible output.
 
 library(rollr2)
 
-set.seed(1)
+set.seed(42)
 roll("2d20+2")
 #> <roll> 2d20+2
-#> Dice:  4, 7
-#> Total: 13
+#> Dice:  17, 5
+#> Total: 24
 ```
 
 A keep selector like `4d6h3` keeps only the highest (`h`) or lowest
@@ -38,11 +38,11 @@ A keep selector like `4d6h3` keeps only the highest (`h`) or lowest
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 roll("4d6h3")
 #> <roll> 4d6h3
-#> Dice:  1, 4, 1, 2
-#> Kept:  4, 2, 1
+#> Dice:  1, 5, 1, 1
+#> Kept:  5, 1, 1
 #> Total: 7
 ```
 
@@ -51,12 +51,12 @@ A notation can also sum several terms and constants, joined with `+` or
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 roll("1d20+1d6+3")
 #> <roll> 1d20+1d6+3
-#> Dice:  4
-#> Dice:  1
-#> Total: 8
+#> Dice:  17
+#> Dice:  5
+#> Total: 25
 ```
 
 ## Summarise a distribution
@@ -67,22 +67,22 @@ totals, printing a count per outcome and a text histogram.
 
 ``` r
 
-set.seed(1)
+set.seed(42)
 roll_distribution("2d6", n = 1000)
 #> <roll_distribution> 2d6
 #> Rolls: 1000  Possible total range: 2 to 12
 #> 
-#>  2 | #######  28
-#>  3 | ############  50
-#>  4 | ###################  79
-#>  5 | ########################### 112
-#>  6 | ################################### 148
-#>  7 | ######################################## 167
-#>  8 | #################################### 150
-#>  9 | ######################### 105
-#> 10 | ####################  82
-#> 11 | ##############  58
-#> 12 | #####  21
+#>  2 | #####  24
+#>  3 | ###############  65
+#>  4 | ####################  91
+#>  5 | ####################### 104
+#>  6 | ################################### 155
+#>  7 | ######################################## 178
+#>  8 | ############################ 126
+#>  9 | ########################### 118
+#> 10 | #################  77
+#> 11 | #########  38
+#> 12 | #####  24
 ```
 
 ## Learn more

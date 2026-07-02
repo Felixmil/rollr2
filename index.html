@@ -74,49 +74,49 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/Felixmil/rollr2" class="external-link">rollr2</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"2d20+2"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll&gt; 2d20+2</span></span>
-<span><span class="co">#&gt; Dice:  4, 7</span></span>
-<span><span class="co">#&gt; Total: 13</span></span></code></pre></div>
+<span><span class="co">#&gt; Dice:  17, 5</span></span>
+<span><span class="co">#&gt; Total: 24</span></span></code></pre></div>
 <p>A keep selector like <code>4d6h3</code> keeps only the highest (<code>h</code>) or lowest (<code>l</code>) dice; the printout then shows which dice were kept.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"4d6h3"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll&gt; 4d6h3</span></span>
-<span><span class="co">#&gt; Dice:  1, 4, 1, 2</span></span>
-<span><span class="co">#&gt; Kept:  4, 2, 1</span></span>
+<span><span class="co">#&gt; Dice:  1, 5, 1, 1</span></span>
+<span><span class="co">#&gt; Kept:  5, 1, 1</span></span>
 <span><span class="co">#&gt; Total: 7</span></span></code></pre></div>
 <p>A notation can also sum several terms and constants, joined with <code>+</code> or <code>-</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"1d20+1d6+3"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll&gt; 1d20+1d6+3</span></span>
-<span><span class="co">#&gt; Dice:  4</span></span>
-<span><span class="co">#&gt; Dice:  1</span></span>
-<span><span class="co">#&gt; Total: 8</span></span></code></pre></div>
+<span><span class="co">#&gt; Dice:  17</span></span>
+<span><span class="co">#&gt; Dice:  5</span></span>
+<span><span class="co">#&gt; Total: 25</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="summarise-a-distribution">Summarise a distribution<a class="anchor" aria-label="anchor" href="#summarise-a-distribution"></a>
 </h2>
 <p><code><a href="reference/roll_distribution.html">roll_distribution()</a></code> rolls the whole notation many times and summarises the distribution of totals, printing a count per outcome and a text histogram.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"2d6"</span>, n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll_distribution&gt; 2d6</span></span>
 <span><span class="co">#&gt; Rolls: 1000  Possible total range: 2 to 12</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;  2 | #######  28</span></span>
-<span><span class="co">#&gt;  3 | ############  50</span></span>
-<span><span class="co">#&gt;  4 | ###################  79</span></span>
-<span><span class="co">#&gt;  5 | ########################### 112</span></span>
-<span><span class="co">#&gt;  6 | ################################### 148</span></span>
-<span><span class="co">#&gt;  7 | ######################################## 167</span></span>
-<span><span class="co">#&gt;  8 | #################################### 150</span></span>
-<span><span class="co">#&gt;  9 | ######################### 105</span></span>
-<span><span class="co">#&gt; 10 | ####################  82</span></span>
-<span><span class="co">#&gt; 11 | ##############  58</span></span>
-<span><span class="co">#&gt; 12 | #####  21</span></span></code></pre></div>
+<span><span class="co">#&gt;  2 | #####  24</span></span>
+<span><span class="co">#&gt;  3 | ###############  65</span></span>
+<span><span class="co">#&gt;  4 | ####################  91</span></span>
+<span><span class="co">#&gt;  5 | ####################### 104</span></span>
+<span><span class="co">#&gt;  6 | ################################### 155</span></span>
+<span><span class="co">#&gt;  7 | ######################################## 178</span></span>
+<span><span class="co">#&gt;  8 | ############################ 126</span></span>
+<span><span class="co">#&gt;  9 | ########################### 118</span></span>
+<span><span class="co">#&gt; 10 | #################  77</span></span>
+<span><span class="co">#&gt; 11 | #########  38</span></span>
+<span><span class="co">#&gt; 12 | #####  24</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="learn-more">Learn more<a class="anchor" aria-label="anchor" href="#learn-more"></a>
