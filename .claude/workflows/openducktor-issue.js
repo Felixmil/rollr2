@@ -78,13 +78,15 @@ const PHASE_DEFS = [
     kickoff: (issue) => `Read GitHub issue ${issue} and write its specification.`,
     revisePrompt: (issue, feedback) =>
       `Read GitHub issue ${issue}. A human requested changes to the posted spec: "${feedback}". ` +
-      `Edit the existing spec comment in place with the revised markdown (do not post a second spec comment), ` +
-      `then post a short reply comment summarizing what changed.`,
+      `Edit the existing spec comment in place with the revised markdown; do not post a second spec ` +
+      `comment or any separate reply comment. Instead, fold a brief note of what changed into the top ` +
+      `of the edited comment itself.`,
     clarificationPrompt: (issue, answer) =>
       `Read GitHub issue ${issue}. A human answered your open [NEEDS CLARIFICATION] question: "${answer}". ` +
       `Fold that answer into the spec as a locked decision (do not leave the marker or re-ask the ` +
-      `question), edit the existing spec comment in place with the revised markdown (do not post a ` +
-      `second spec comment), then post a short reply comment confirming what was resolved.`,
+      `question). Edit the existing spec comment in place with the revised markdown; do not post a ` +
+      `second spec comment or any separate reply comment. Instead, fold a brief note of what was ` +
+      `resolved into the top of the edited comment itself.`,
   },
   {
     key: "plan",
@@ -98,13 +100,15 @@ const PHASE_DEFS = [
     kickoff: (issue) => `Read GitHub issue ${issue}'s spec and write its implementation plan.`,
     revisePrompt: (issue, feedback) =>
       `Read GitHub issue ${issue}. A human requested changes to the posted plan: "${feedback}". ` +
-      `Edit the existing plan comment in place with the revised markdown (do not post a second plan comment), ` +
-      `then post a short reply comment summarizing what changed.`,
+      `Edit the existing plan comment in place with the revised markdown; do not post a second plan ` +
+      `comment or any separate reply comment. Instead, fold a brief note of what changed into the top ` +
+      `of the edited comment itself.`,
     clarificationPrompt: (issue, answer) =>
       `Read GitHub issue ${issue}. A human answered your open [NEEDS CLARIFICATION] question: "${answer}". ` +
       `Fold that answer into the plan as a locked decision (do not leave the marker or re-ask the ` +
-      `question), edit the existing plan comment in place with the revised markdown (do not post a ` +
-      `second plan comment), then post a short reply comment confirming what was resolved.`,
+      `question). Edit the existing plan comment in place with the revised markdown; do not post a ` +
+      `second plan comment or any separate reply comment. Instead, fold a brief note of what was ` +
+      `resolved into the top of the edited comment itself.`,
   },
   {
     key: "build",
@@ -392,11 +396,20 @@ async function fixupBuild(issue, buildDef, qaReport) {
 async function revise(issue, def, feedback, { isClarificationAnswer = false } = {}) {
   const promptBuilder = isClarificationAnswer ? def.clarificationPrompt : def.revisePrompt;
   const prompt = `${promptBuilder(issue, feedback)}${mentionSuffix()}`;
+  // Spec and plan revisions are editorial: read feedback, edit markdown
+  // in place. Build revisions still write real code changes (see its
+  // revisePrompt), so only spec/plan get the cheaper model here; this
+  // function is never actually reached for QA (see the caller, which
+  // routes a QA-gate /revise to fixupBuild instead).
+  const opts =
+    def.key === "spec" || def.key === "plan"
+      ? { agentType: def.agentType, phase: "Revise", model: "sonnet" }
+      : { agentType: def.agentType, phase: "Revise" };
   if (def.key === "qa") {
-    const report = await agent(prompt, { agentType: def.agentType, phase: "Revise" });
+    const report = await agent(prompt, opts);
     return { verdict: report.includes("QA-VERDICT: approved") ? "approved" : "rejected", report };
   }
-  await agent(prompt, { agentType: def.agentType, phase: "Revise" });
+  await agent(prompt, opts);
   return null;
 }
 
