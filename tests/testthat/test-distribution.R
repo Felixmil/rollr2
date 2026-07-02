@@ -213,7 +213,19 @@ test_that("print.roll_distribution renders a multi-term notation", {
 })
 
 test_that("grand_total_pmf reduces to outcome_pmf for a lone dice term", {
-  for (nt in c("2d6", "3d8-1", "4d6h3", "3d6l2", "1d4-10", "2d6!", "2d6!!")) {
+  notations <- c(
+    "2d6",
+    "3d8-1",
+    "4d6h3",
+    "3d6l2",
+    "1d4-10",
+    "2d6!",
+    "2d6!!",
+    "2d6r1",
+    "1d20rr1",
+    "4d6r1h3"
+  )
+  for (nt in notations) {
     terms <- parse_notation(nt)$terms
     sole <- terms[[1]]
     expect_equal(
@@ -224,7 +236,9 @@ test_that("grand_total_pmf reduces to outcome_pmf for a lone dice term", {
         sole$m,
         sole$keep,
         sole$keep_n,
-        sole$explode
+        sole$explode,
+        sole$reroll,
+        sole$reroll_t
       )
     )
   }
@@ -329,4 +343,114 @@ test_that("outcome_pmf matches brute-force enumeration for an explode-once keep 
   dense[names(expected)] <- expected
 
   expect_equal(unname(as.numeric(dense)), unname(as.numeric(pmf)))
+})
+
+# Reroll dice ----
+
+test_that("roll_distribution samples reroll notation reproducibly and reports the theoretical range (AC-4)", {
+  withr::local_seed(1)
+  d_once <- roll_distribution("2d6r1", n = 2000)
+  expect_equal(sum(d_once$counts), 2000L)
+  # A reroll-once die can still land anywhere in 1..X, so the range matches a
+  # plain 2d6: 2..12.
+  expect_equal(d_once$range, c(2L, 12L))
+
+  withr::local_seed(2)
+  d_until <- roll_distribution("1d20rr1", n = 2000)
+  expect_equal(sum(d_until$counts), 2000L)
+  # A reroll-until die always lands strictly above T, so 1d20rr1 is 2..20 and
+  # never produces a 1.
+  expect_equal(d_until$range, c(2L, 20L))
+  expect_false("1" %in% names(d_until$counts))
+
+  first <- withr::with_seed(7, roll_distribution("2d6r1", n = 500))
+  second <- withr::with_seed(7, roll_distribution("2d6r1", n = 500))
+  expect_equal(first$counts, second$counts)
+})
+
+test_that("term_bounds reports the reroll per-die support bounds (AC-4)", {
+  # Reroll-once keeps the plain 1..X support, so 2d6r1 is 2..12.
+  once <- parse_notation("2d6r1")$terms[[1]]
+  expect_equal(term_bounds(once), c(2L, 12L))
+
+  # Reroll-until lifts the per-die minimum to T+1, so 1d20rr1 is 2..20 and
+  # 2d6rr1 is 4..12.
+  until1 <- parse_notation("1d20rr1")$terms[[1]]
+  expect_equal(term_bounds(until1), c(2L, 20L))
+
+  until2 <- parse_notation("2d6rr1")$terms[[1]]
+  expect_equal(term_bounds(until2), c(4L, 12L))
+})
+
+test_that("the reroll-once per-die PMF is not uniform and sums to 1 (AC-5)", {
+  # 1d4r1: values <= T carry only the reroll mass T/X^2 = 1/16, while values
+  # > T carry the direct plus reroll mass 1/X + T/X^2 = 5/16. Sums to 1.
+  pmf <- outcome_pmf(1L, 4L, 0L, NA_character_, NA_integer_, "none", "once", 1L)
+
+  expect_equal(as.integer(names(pmf)), seq(1L, 4L))
+  expect_equal(unname(pmf[1]), 1 / 16)
+  expect_equal(unname(pmf[2:4]), rep(5 / 16, 3))
+  expect_equal(sum(pmf), 1)
+})
+
+test_that("the reroll-until per-die PMF is uniform over T+1..X and sums to 1 (AC-5)", {
+  # 1d6rr1: zero mass on 1, uniform 1/5 over 2..6.
+  pmf <- outcome_pmf(
+    1L,
+    6L,
+    0L,
+    NA_character_,
+    NA_integer_,
+    "none",
+    "until",
+    1L
+  )
+
+  expect_equal(as.integer(names(pmf)), seq(1L, 6L))
+  expect_equal(unname(pmf[1]), 0)
+  expect_equal(unname(pmf[2:6]), rep(1 / 5, 5))
+  expect_equal(sum(pmf), 1)
+})
+
+test_that("outcome_pmf matches brute-force enumeration for a reroll-once keep case (AC-5)", {
+  # Enumerate all 3^3 per-die-outcome triples of 3d3r1h2 weighted by the exact
+  # single-die 1d3r1 distribution, keep the top 2, and tabulate.
+  die <- reroll_die_probs(3L, "once", 1L)
+  grid <- expand.grid(a = 1:3, b = 1:3, c = 1:3)
+  w <- die[grid$a] * die[grid$b] * die[grid$c]
+  kept <- apply(grid, 1L, \(r) sum(sort(r, decreasing = TRUE)[1:2]))
+  expected <- tapply(w, kept, sum)
+
+  pmf <- outcome_pmf(3L, 3L, 0L, "h", 2L, "none", "once", 1L)
+  dense <- setNames(numeric(length(pmf)), names(pmf))
+  dense[names(expected)] <- expected
+
+  expect_equal(unname(as.numeric(dense)), unname(as.numeric(pmf)))
+})
+
+test_that("grand_total_pmf for a reroll notation is a finite normalized distribution over contiguous outcomes (AC-5)", {
+  for (nt in c("2d6r1", "2d6rr1", "4d6r1h3", "4d6rr1l2", "1d20+2d6rr1")) {
+    pmf <- grand_total_pmf(parse_notation(nt)$terms)
+    outcomes <- as.integer(names(pmf))
+
+    expect_equal(sum(pmf), 1)
+    expect_true(all(pmf >= 0))
+    expect_equal(outcomes, seq(min(outcomes), max(outcomes)))
+  }
+})
+
+test_that("the sampled reroll distribution agrees with the exact PMF as n grows (AC-5)", {
+  # At large n the empirical proportions converge to the exact PMF; a loose
+  # per-outcome absolute tolerance confirms the sampler and the exact
+  # distribution describe the same law.
+  withr::local_seed(42)
+  d <- roll_distribution("2d6r1", n = 200000)
+  empirical <- d$counts / sum(d$counts)
+
+  pmf <- grand_total_pmf(parse_notation("2d6r1")$terms)
+  pmf <- pmf[pmf > 0]
+  common <- intersect(names(empirical), names(pmf))
+
+  expect_setequal(names(empirical), names(pmf))
+  expect_lt(max(abs(empirical[common] - pmf[common])), 0.01)
 })
