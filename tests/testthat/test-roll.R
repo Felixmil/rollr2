@@ -91,3 +91,71 @@ test_that("print.roll shows the kept dice when a selector is present", {
 test_that("roll surfaces parse errors", {
   expect_snapshot(error = TRUE, roll("nonsense"))
 })
+
+test_that("compare defaults to FALSE and leaves the object and print unchanged", {
+  withr::local_seed(7)
+  result <- roll("2d20+2")
+
+  expect_false(result$compare)
+  # Default path stays byte-identical to a roll built without the argument.
+  expect_snapshot(print(result))
+})
+
+test_that("a non-logical compare flag is rejected", {
+  expect_snapshot(error = TRUE, roll("2d6", compare = "yes"))
+  expect_snapshot(error = TRUE, roll("2d6", compare = NA))
+  expect_snapshot(error = TRUE, roll("2d6", compare = c(TRUE, FALSE)))
+})
+
+test_that("print.roll with compare shows the distribution and the marked total", {
+  # Seed 20 rolls a mid-high total (9) on 2d6, so the percentile is non-trivial
+  # and the marked bar sits inside the histogram, not at an extreme.
+  withr::local_seed(20)
+  expect_snapshot(print(roll("2d6", compare = TRUE)))
+})
+
+test_that("compare follows a keep-highest selector's range and shape", {
+  withr::local_seed(9)
+  expect_snapshot(print(roll("4d6h3", compare = TRUE)))
+})
+
+test_that("compare against a skewed keep-highest distribution is probability-weighted", {
+  # 2d20h at total 11: the probability mass strictly below 11 (25%) diverges
+  # from the unweighted count of distinct outcomes below 11 (50%). The header
+  # must report the weighted reading.
+  withr::local_seed(5)
+  expect_snapshot(print(roll("2d20h", compare = TRUE)))
+})
+
+test_that("compare follows a shifted range under a negative modifier", {
+  # Seed 4 rolls the maximum total (-6) on 1d4-10, so the marked bar is the
+  # top of the shifted range and the standing is the mass strictly below it.
+  withr::local_seed(4)
+  expect_snapshot(print(roll("1d4-10", compare = TRUE)))
+})
+
+test_that("rolling the minimum total reports a 0% standing", {
+  # Seed 1 rolls the minimum total (-9) on 1d4-10: nothing is strictly below it.
+  withr::local_seed(1)
+  expect_snapshot(print(roll("1d4-10", compare = TRUE)))
+})
+
+test_that("the reported standing is deterministic for a given notation and total", {
+  # The standing must be a pure function of (components, total): identical
+  # across repeated calls and independent of the RNG seed.
+  pmf <- outcome_pmf(2L, 20L, 0L, "h", 1L)
+  first <- percentile_below(pmf, 11L)
+  second <- percentile_below(pmf, 11L)
+
+  expect_equal(first, second)
+  expect_equal(first, 25)
+})
+
+test_that("a wide-range comparison stays complete and finite", {
+  # 10d100 spans 991 outcomes; the block must cover every outcome (one line
+  # each) plus the header, and remain fast (no x^n enumeration).
+  withr::local_seed(1)
+  block <- comparison_block(roll("10d100", compare = TRUE))
+
+  expect_length(block, 992L)
+})

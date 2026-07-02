@@ -98,3 +98,67 @@ test_that("a non-positive-integer repetition count is rejected", {
 test_that("roll_distribution surfaces parse errors", {
   expect_snapshot(error = TRUE, roll_distribution("bad", n = 10))
 })
+
+test_that("outcome_pmf is a probability distribution over the full range", {
+  cases <- list(
+    plain = list(
+      n = 2L,
+      x = 6L,
+      m = 0L,
+      keep = NA_character_,
+      keep_n = NA_integer_
+    ),
+    modifier = list(
+      n = 3L,
+      x = 8L,
+      m = -1L,
+      keep = NA_character_,
+      keep_n = NA_integer_
+    ),
+    high = list(n = 4L, x = 6L, m = 0L, keep = "h", keep_n = 3L),
+    low = list(n = 3L, x = 6L, m = 0L, keep = "l", keep_n = 2L)
+  )
+
+  for (case in cases) {
+    pmf <- outcome_pmf(case$n, case$x, case$m, case$keep, case$keep_n)
+    k <- if (is.na(case$keep)) case$n else case$keep_n
+
+    expect_equal(sum(pmf), 1)
+    expect_true(all(pmf >= 0))
+    expect_equal(
+      as.integer(names(pmf)),
+      seq(k + case$m, k * case$x + case$m)
+    )
+  }
+})
+
+test_that("outcome_pmf matches brute-force enumeration for a keep-highest case", {
+  # Enumerate all 6^4 outcomes of 4d6h3, keep the top 3, and tabulate exact
+  # probabilities to pin the dynamic program to ground truth.
+  grid <- expand.grid(rep(list(seq_len(6L)), 4L))
+  totals <- apply(grid, 1L, \(row) sum(sort(row, decreasing = TRUE)[1:3]))
+  expected <- prop.table(table(factor(totals, levels = seq(3L, 18L))))
+
+  pmf <- outcome_pmf(4L, 6L, 0L, "h", 3L)
+
+  expect_equal(unname(pmf), as.numeric(expected))
+})
+
+test_that("outcome_pmf reflects a keep-lowest distribution from keep-highest", {
+  # 3d6l2 keeps the lowest 2; its shape is the face reflection of 3d6h2.
+  grid <- expand.grid(rep(list(seq_len(6L)), 3L))
+  totals <- apply(grid, 1L, \(row) sum(sort(row)[1:2]))
+  expected <- prop.table(table(factor(totals, levels = seq(2L, 12L))))
+
+  pmf <- outcome_pmf(3L, 6L, 0L, "l", 2L)
+
+  expect_equal(unname(pmf), as.numeric(expected))
+})
+
+test_that("percentile_below reports 0 at the minimum and mass-below at the maximum", {
+  pmf <- outcome_pmf(2L, 6L, 0L, NA_character_, NA_integer_)
+
+  expect_equal(percentile_below(pmf, 2L), 0)
+  # Everything except the maximum (probability 1/36) is strictly below 12.
+  expect_equal(percentile_below(pmf, 12L), round(100 * (1 - 1 / 36)))
+})
