@@ -5,6 +5,13 @@
 # only then rewrites the "status" field in place, leaving every other
 # field untouched.
 #
+# A transition to the status already in effect is an idempotent no-op:
+# it exits 0 without rewriting the file (see the guard below). This makes
+# re-applying the same transition harmless, so a caller that re-enters a
+# phase and re-issues its transition does not crash on an X -> X edge the
+# table does not list. Every genuinely different edge still goes through
+# the table and a disallowed one fails loudly.
+#
 # Copy this file into a target repo's .claude/scripts/ directory. No
 # agent or skill in this plugin is allowed to write state.json's
 # "status" field directly; this script is the only thing that moves the
@@ -34,6 +41,20 @@ if [[ -f "$state_file" ]]; then
   current=$(jq -r '.status // "open"' "$state_file")
 else
   current="open"
+fi
+
+# Idempotent no-op: a transition to the status the machine is already at
+# is "already there", not an error. This makes a double-apply of the same
+# transition harmless, which matters because a caller can re-enter a phase
+# and re-issue its transition (e.g. after a stale-read replay on resume) and
+# would otherwise crash on an X -> X edge the table does not list. Only an
+# EXACT no-op is short-circuited; every genuinely different edge, including
+# every real illegal one, still goes through the table below and fails loudly.
+# Reported on stderr so a no-op is visible, not silent, and the file is left
+# untouched (no rewrite, so no chance of corrupting an already-correct state).
+if [[ "$current" == "$to" ]]; then
+  echo "Already at $to; no-op transition." >&2
+  exit 0
 fi
 
 # The type:task/type:bug signal is read from GitHub (read-only), exactly
