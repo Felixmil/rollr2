@@ -166,3 +166,60 @@ test_that("malformed joins and pure-constant notation are rejected", {
   expect_snapshot(error = TRUE, parse_notation("1+2"))
   expect_snapshot(error = TRUE, parse_notation("1d6 1d6"))
 })
+
+# Success-counting pools ----
+
+test_that("parse_notation reads a success comparator and its integer target (AC-1)", {
+  expect_snapshot(parse_notation("5d10>=8"))
+  expect_snapshot(parse_notation("6d6>=5"))
+  expect_snapshot(parse_notation("5d10>8"))
+  expect_snapshot(parse_notation("5d10<=3"))
+  expect_snapshot(parse_notation("5d10<3"))
+})
+
+test_that("a success comparator accepts the count-omitted and case variants (AC-1)", {
+  expect_snapshot(parse_notation("d10>=8"))
+  expect_snapshot(parse_notation("5D10>=8"))
+  expect_snapshot(parse_notation("5d10 >= 8"))
+})
+
+test_that("a degenerate but well-formed success target parses without error (AC-10)", {
+  expect_snapshot(parse_notation("5d10>=1"))
+  expect_snapshot(parse_notation("5d10>=11"))
+})
+
+test_that("a comparator combined with a keep selector is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("5d10h3>=8"))
+  expect_snapshot(error = TRUE, parse_notation("5d10>=8h3"))
+})
+
+test_that("a comparator combined with an explode marker is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("5d10!>=8"))
+  expect_snapshot(error = TRUE, parse_notation("5d10>=8!"))
+})
+
+test_that("a comparator combined with a modifier is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("5d10>=8+2"))
+  expect_snapshot(error = TRUE, parse_notation("5d10+2>=8"))
+})
+
+test_that("a comparator inside a multi-term notation is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("5d10>=8+1d6"))
+  expect_snapshot(error = TRUE, parse_notation("5d10>=8-1d4"))
+  expect_snapshot(error = TRUE, parse_notation("2+5d10>=8"))
+})
+
+test_that("a malformed comparator or target is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("5d10>="))
+  expect_snapshot(error = TRUE, parse_notation("5d10>=8.5"))
+  expect_snapshot(error = TRUE, parse_notation("5d10>>8"))
+  expect_snapshot(error = TRUE, parse_notation("5d10=>8"))
+  expect_snapshot(error = TRUE, parse_notation("5d10==8"))
+})
+
+test_that("a success pool reuses the count and die-size validation (AC-2)", {
+  # A success notation is single-term, so the error keeps the single-term
+  # `in "<notation>".` phrasing and the existing count/size classes.
+  expect_snapshot(error = TRUE, parse_notation("0d10>=5"))
+  expect_snapshot(error = TRUE, parse_notation("5d1>=1"))
+})

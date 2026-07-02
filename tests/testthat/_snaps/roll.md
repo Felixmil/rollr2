@@ -358,3 +358,46 @@
       19 | ########  8
       
 
+# print.roll presents a success count rather than a total (AC-5)
+
+    Code
+      print(r)
+    Output
+      <roll> 5d10>=8
+      Dice:      9, 3, 8, 5, 10
+      Successes: 3 of 5 (faces >= 8)
+
+# print.roll with compare shows the success distribution and marked count (AC-8)
+
+    Code
+      print(r)
+    Output
+      <roll> 5d10>=8
+      Dice:      9, 3, 8, 5, 4
+      Successes: 2 of 5 (faces >= 8)
+      
+      Success distribution for 5d10>=8: this roll (2 successes) beats 53% of outcomes
+      0 | ################### 19
+      1 | ######################################## 40
+      2 | ################################## 34 <- this roll
+      3 | ############### 15
+      4 | ###  3
+      5 | #  1
+      
+
+# an always-success pool warns once and returns N successes (AC-10)
+
+    Code
+      result <- roll("5d10>=1")
+    Condition
+      Warning:
+      A success pool with target 1 against d10 >= can never fail (p = 1).
+
+# a never-success pool warns once and returns zero successes (AC-10)
+
+    Code
+      result <- roll("5d10>=11")
+    Condition
+      Warning:
+      A success pool with target 11 against d10 >= can never succeed (p = 0).
+

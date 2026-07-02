@@ -27,7 +27,18 @@ cap, \code{roll()} emits a warning while still returning a valid roll.
 Several such terms, plus bare integer constants, may be joined with \code{+} or
 \code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}, \verb{1d20+1d6+1d4+3});
 at least one dice term is required and each keep selector applies within
-its own term only. See \code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
+its own term only.
+
+A trailing success comparator turns the whole notation into a
+success-counting pool: \code{NdX>=T}, \code{NdX>T}, \code{NdX<=T}, or \code{NdX<T} against an
+integer target \code{T} (e.g. \verb{5d10>=8}, \verb{6d6>=5}). The outcome is then a count
+of dice that satisfy the comparator, an integer in \verb{0..N}, not a summed
+total. A die succeeds when its face satisfies the comparator against \code{T},
+with per-die probability \code{p} equal to the fraction of \verb{1..X} faces that
+satisfy it, so the count is exactly Binomial(\code{N}, \code{p}). A success-counting
+notation is a single bare dice term with a comparator: it takes no keep
+selector, explode marker, or modifier, and does not join with other terms
+or constants. See \code{\link[=roll_distribution]{roll_distribution()}} to summarise many rolls.}
 
 \item{compare}{A length-1 logical. When \code{TRUE}, printing the roll also
 shows where the total sits within the notation's full theoretical outcome
@@ -55,6 +66,11 @@ print method). For a single-term notation the parsed components \code{n}, \code{
 are omitted for a multi-term notation, where per-term access via \code{terms}
 is required. For an exploding term \code{dice} still lists every physical die
 including rerolls in draw order, and \code{kept} lists the kept per-die totals.
+For a success-counting notation the outcome is a success count, not a
+summed total: \code{total} (also \code{successes}) is the number of dice that satisfy
+the comparator (\verb{0..N}), \code{successful} is the subset of \code{dice} that satisfy
+it, and \code{success} is \code{TRUE}; a summed-total roll carries none of these
+success fields.
 }
 \description{
 Parses a dice-notation string and simulates a single roll. A notation may
@@ -79,6 +95,7 @@ roll("2d20+2")
 roll("d6")
 roll("4d6h3")
 roll("1d20+1d6+3")
+roll("5d10>=8")
 roll("2d6", compare = TRUE)
 
 }

@@ -20,7 +20,13 @@
 #'   `roll_distribution()` does not itself warn on the cap. Several such terms,
 #'   plus bare integer constants, may be joined with `+` or `-` into one
 #'   notation (e.g. `1d20+1d6`, `2d20h+2d20l`); at least one dice term is
-#'   required and each keep selector applies within its own term only.
+#'   required and each keep selector applies within its own term only. A
+#'   trailing success comparator (`NdX>=T`, `NdX>T`, `NdX<=T`, `NdX<T` against an
+#'   integer target `T`, e.g. `5d10>=8`, `6d6>=5`) turns the whole notation into
+#'   a success-counting pool: each simulated roll is then a count of dice that
+#'   satisfy the comparator (`0..N`), not a summed total. A success-counting
+#'   notation is a single bare dice term with a comparator (no keep selector,
+#'   explode marker, modifier, join, or constant).
 #' @param n Number of whole-notation rolls to simulate. A positive integer.
 #'
 #' @return A `roll_distribution` object: a list with `counts` (an integer
@@ -30,8 +36,12 @@
 #'   signed constants), `n`, `terms` (the parsed per-term breakdown), and the
 #'   original `notation`. For a single-term notation the parsed components
 #'   `dice_n`, `x`, `m`, `keep`, `keep_n` are also present at the top level;
-#'   they are omitted for a multi-term notation. Its `print()` method renders
-#'   the counts and a text histogram for the console.
+#'   they are omitted for a multi-term notation. For a success-counting notation
+#'   the outcome is a success count rather than a summed total: `range` is the
+#'   success-count range `c(0, N)`, `counts` are observed success counts, and
+#'   `success` is `TRUE`; a summed-total distribution carries no `success` field.
+#'   Its `print()` method renders the counts and a text histogram for the
+#'   console.
 #'
 #' @examples
 #' set.seed(1)
@@ -44,9 +54,25 @@ roll_distribution <- function(notation, n) {
   parsed <- parse_notation(notation)
   n <- validate_reps(n)
 
+  # A success-counting notation is a single dice term carrying a comparator; its
+  # outcome is a success count over `0..N`, not a summed total. A degenerate
+  # (always/never-success) pool warns once here, before sampling, then samples
+  # the correct clamped outcome.
+  success <- is_success_term(parsed$terms[[1L]])
+  if (success) {
+    sole <- parsed$terms[[1L]]
+    warn_degenerate_pool(
+      sole$x,
+      sole$compare_op,
+      sole$compare_target,
+      success_p(sole$x, sole$compare_op, sole$compare_target)
+    )
+  }
+
   # Simulate n whole-notation rolls: accumulate the length-n vector of grand
   # totals term by term, left-to-right in term order so seeded runs stay
-  # reproducible. Constant terms add their value without drawing.
+  # reproducible. Constant terms add their value without drawing. For a success
+  # notation each accumulated value is a success count.
   totals <- integer(n)
   for (term in parsed$terms) {
     totals <- totals + term_totals(term, n)
@@ -83,6 +109,13 @@ roll_distribution <- function(notation, n) {
     obj$keep_n <- sole$keep_n
   }
 
+  # Mark a success-counting distribution so the print/plot methods present a
+  # success count rather than a summed total. A summed-total object does not
+  # gain the field (its absence, tested via `isTRUE()`, means summed total).
+  if (success) {
+    obj$success <- TRUE
+  }
+
   structure(obj, class = "roll_distribution")
 }
 
@@ -93,10 +126,17 @@ roll_distribution <- function(notation, n) {
 #' @export
 print.roll_distribution <- function(x, ...) {
   cat("<roll_distribution> ", x$notation, "\n", sep = "")
+  # A success-counting distribution reports a success-count range; a
+  # summed-total distribution is byte-identical to before.
+  range_label <- if (isTRUE(x$success)) {
+    "  Possible success range: "
+  } else {
+    "  Possible total range: "
+  }
   cat(
     "Rolls: ",
     x$n,
-    "  Possible total range: ",
+    range_label,
     x$range[1],
     " to ",
     x$range[2],
@@ -122,16 +162,25 @@ plot.roll_distribution <- function(x, ...) {
     count = as.integer(x$counts)
   )
 
+  # A success-counting distribution names successes on the title and x axis; a
+  # summed-total distribution keeps its existing labels byte-for-byte.
+  title <- if (isTRUE(x$success)) {
+    paste0("Success distribution for ", x$notation)
+  } else {
+    paste0("Distribution of totals for ", x$notation)
+  }
+  x_lab <- if (isTRUE(x$success)) "Successes" else "Total"
+
   ggplot(bars, aes(x = .data$total, y = .data$count)) +
     geom_col(fill = "steelblue") +
     scale_x_continuous(breaks = integer_axis_breaks(x$range)) +
     labs(
-      title = paste0("Distribution of totals for ", x$notation),
+      title = title,
       subtitle = paste0(
         format(x$n, big.mark = ","),
         " simulated rolls"
       ),
-      x = "Total",
+      x = x_lab,
       y = "Count"
     ) +
     theme_minimal()
@@ -189,6 +238,18 @@ term_totals <- function(term, n) {
   m <- term$m
   keep <- term$keep
   keep_n <- term$keep_n
+
+  # A success-counting term draws its `n * dice_n` dice with the identical
+  # batched `sample.int` the marker-free path uses (so a seeded run matches the
+  # equivalent bare `NdX` draw order and count), then counts per-row successes.
+  # Success counting consumes no RNG. A success term is single-term with
+  # `sign = +1` and no modifier, so the per-row success count is the outcome
+  # directly.
+  if (is_success_term(term)) {
+    draws <- sample.int(x, size = n * dice_n, replace = TRUE)
+    rolls <- matrix(draws, nrow = n, ncol = dice_n)
+    return(rowSums(success_mask(rolls, term$compare_op, term$compare_target)))
+  }
 
   if (term$explode == "none") {
     # Marker-free: draw all n * dice_n dice at once, shaped into an
@@ -252,6 +313,14 @@ term_bounds <- function(term) {
     return(c(term$value, term$value))
   }
 
+  # A success-counting term's outcome is a success count over `0..N`, so its
+  # bounds are `c(0, N)` regardless of die size, target, or comparator. This is
+  # the same range the exact PMF spans and the sampler bins over, so they cannot
+  # drift.
+  if (is_success_term(term)) {
+    return(c(0L, term$n))
+  }
+
   k <- if (is.na(term$keep)) term$n else term$keep_n
   lo <- k + term$m
   hi <- k * explode_per_die_max(term$x, term$explode) + term$m
@@ -278,6 +347,94 @@ explode_per_die_max <- function(x, explode) {
   )
 }
 
+# TRUE when a parsed term is a success-counting term: a dice term carrying a
+# non-`NA` comparator. A summed-total term lacks the `compare_op` field
+# entirely, so the `is.null()` guard keeps it out of every success branch (and
+# its record byte-identical to before). Defined once so every success branch
+# tests membership the same way.
+is_success_term <- function(term) {
+  term$kind == "dice" &&
+    !is.null(term$compare_op) &&
+    !is.na(term$compare_op)
+}
+
+# Emit a single class-tagged warning when a success pool is degenerate: an
+# always-success (`p = 1`) or never-success (`p = 0`) target, almost always a
+# user mistake (a target off the face range). The result is still returned
+# (the correct clamped outcome). Shared by `roll()` and `roll_distribution()`
+# so the wording and class cannot drift; parallel to the explode-cap warning.
+# No-op for a non-degenerate pool.
+warn_degenerate_pool <- function(x, op, target, p) {
+  if (p == 1) {
+    warn(
+      paste0(
+        "A success pool with target ",
+        target,
+        " against d",
+        x,
+        " ",
+        op,
+        " can never fail (p = 1)."
+      ),
+      class = c("rollr2_warning_degenerate_pool", "rollr2_warning")
+    )
+  } else if (p == 0) {
+    warn(
+      paste0(
+        "A success pool with target ",
+        target,
+        " against d",
+        x,
+        " ",
+        op,
+        " can never succeed (p = 0)."
+      ),
+      class = c("rollr2_warning_degenerate_pool", "rollr2_warning")
+    )
+  }
+}
+
+# The exact per-die success probability for a die of size `x` under comparator
+# `op` against integer target `target`: the fraction of `1..x` faces that
+# satisfy the comparator, clamped to `[0, 1]`. Pure and RNG-free. A target
+# outside `1..x` clamps to an always-success (`p = 1`) or never-success
+# (`p = 0`) pool.
+success_p <- function(x, op, target) {
+  raw <- switch(
+    op,
+    ">=" = (x - target + 1L) / x,
+    ">" = (x - target) / x,
+    "<=" = target / x,
+    "<" = (target - 1L) / x
+  )
+  max(0, min(1, raw))
+}
+
+# The per-die success mask: TRUE where a drawn face satisfies comparator `op`
+# against integer `target`. Works elementwise on a vector or matrix of faces
+# (used both by the single roll and the sampler). This is the actual-face
+# count, distinct from `success_p()` (the exact per-die probability).
+success_mask <- function(faces, op, target) {
+  switch(
+    op,
+    ">=" = faces >= target,
+    ">" = faces > target,
+    "<=" = faces <= target,
+    "<" = faces < target
+  )
+}
+
+# The exact success-count PMF of a pool of `n` iid dice each succeeding with
+# probability `p`: Binomial(n, p) over `0..n`, a named numeric vector (names the
+# integer success counts, ascending, summing to 1). Finite by construction, so
+# no truncation is needed. The success-count analogue of `term_weights()` /
+# `outcome_pmf()`.
+success_pmf <- function(n, p) {
+  probs <- dbinom(0:n, n, p)
+  names(probs) <- 0:n
+  probs
+}
+
 # Exact probability mass function of a whole notation's grand total, over its
 # full theoretical range. Pure combinatorics: consumes no RNG, so the standing
 # it feeds is deterministic for a given (notation, total). Convolves each dice
@@ -299,6 +456,18 @@ explode_per_die_max <- function(x, explode) {
 # `terms` is the parsed term list (each dice term carries `sign`, `n`, `x`,
 # `m`, `keep`, `keep_n`, `explode`; each constant carries `value`).
 grand_total_pmf <- function(terms) {
+  # A success-counting notation is always a single dice term carrying a
+  # comparator; its outcome is a success count over `0..N`, distributed exactly
+  # as Binomial(N, p). Return that PMF directly (RNG-free, finite, sums to 1),
+  # so every PMF-consuming surface reads the success-count distribution from the
+  # same single source of truth. A summed-total term lacks `compare_op` and
+  # takes the convolution path below unchanged.
+  sole <- terms[[1L]]
+  if (is_success_term(sole)) {
+    p <- success_p(sole$x, sole$compare_op, sole$compare_target)
+    return(success_pmf(sole$n, p))
+  }
+
   # Running distribution as a weight vector with an integer `offset`: index i
   # (1-based) holds the weight of grand-total `offset + i - 1`. Start from
   # "sum 0 with weight 1".
