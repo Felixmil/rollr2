@@ -17,6 +17,11 @@ knitr::opts_chunk$set(
 
 # rollr2
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/Felixmil/rollr2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Felixmil/rollr2/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/Felixmil/rollr2/graph/badge.svg)](https://app.codecov.io/gh/Felixmil/rollr2)
+<!-- badges: end -->
+
 `rollr2` parses and rolls tabletop RPG dice notation such as `"2d20+2"`. From a single notation string it reports every individual die, the kept dice, and the adjusted total, and it can summarise the outcome distribution across many repeated rolls.
 
 ## Installation
