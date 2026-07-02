@@ -28,7 +28,11 @@
   and the count-omitted `dX` variants (case-insensitive `d`,
   whitespace-tolerant), plus an optional keep selector `h`/`l` after the
   die size that keeps only the highest or lowest `K` dice (e.g. `2d20h`,
-  `4d6h3`, `3d6l2`, defaulting to `K = 1`); they reject invalid
-  notation, non-positive or non-integer die counts, die sizes below 2,
-  keep counts of zero or exceeding the die count, and
+  `4d6h3`, `3d6l2`, defaulting to `K = 1`). A notation may also be a sum
+  of several such terms joined by `+`/`-`, together with bare integer
+  constants (e.g. `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`); at least
+  one dice term is required, a `-` before a term subtracts its whole
+  contribution, and each keep selector applies within its own term only.
+  They reject invalid notation, non-positive or non-integer die counts,
+  die sizes below 2, keep counts of zero or exceeding the die count, and
   non-positive-integer repetition counts with clear errors.

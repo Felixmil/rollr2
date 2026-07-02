@@ -90,12 +90,13 @@
 <p>A <code>roll</code> object is a list. The three fields you will use most are:</p>
 <ul>
 <li>
-<code>dice</code>: an integer vector of every die rolled.</li>
+<code>dice</code>: an integer vector of every die rolled (across all terms, in order, when the notation has several).</li>
 <li>
 <code>kept</code>: the dice that contribute to the total (equal to <code>dice</code> when there is no keep selector).</li>
 <li>
-<code>total</code>: the sum of the kept dice plus the modifier.</li>
+<code>total</code>: the grand total, the sum of every term’s kept dice plus its modifier.</li>
 </ul>
+<p>For a multi-term notation, <code>terms</code> holds the per-term breakdown (each term’s own <code>dice</code>, <code>kept</code>, and <code>subtotal</code>), while <code>dice</code> and <code>kept</code> stay the concatenation across terms.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r</span><span class="op">$</span><span class="va">dice</span></span>
@@ -123,11 +124,46 @@
 <span><span class="va">kept_roll</span><span class="op">$</span><span class="va">total</span></span>
 <span><span class="co">#&gt; [1] 7</span></span></code></pre></div>
 </div>
+</section><section class="level2"><h2 id="add-several-terms-together">Add several terms together<a class="anchor" aria-label="anchor" href="#add-several-terms-together"></a>
+</h2>
+<p>A notation can be a sum of several terms joined by <code>+</code> or <code>-</code>, so you can add different dice and constants in one call. Each term is the grammar above (its own dice, optional keep selector, optional modifier), a <code>-</code> before a term subtracts its whole contribution, and a bare integer is a constant term. Keep selection applies within a term only; there is no keep across the whole expression.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">mixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"1d20+1d6+3"</span><span class="op">)</span></span>
+<span><span class="va">mixed</span></span>
+<span><span class="co">#&gt; &lt;roll&gt; 1d20+1d6+3</span></span>
+<span><span class="co">#&gt; Dice:  4</span></span>
+<span><span class="co">#&gt; Dice:  1</span></span>
+<span><span class="co">#&gt; Total: 8</span></span></code></pre></div>
+</div>
+<p>The printout shows one <code>Dice:</code> line per dice term and a single grand <code>Total:</code>. The per-term detail lives in <code>terms</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mixed</span><span class="op">$</span><span class="va">total</span></span>
+<span><span class="co">#&gt; [1] 8</span></span>
+<span><span class="va">mixed</span><span class="op">$</span><span class="va">terms</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">subtotal</span></span>
+<span><span class="co">#&gt; [1] 4</span></span>
+<span><span class="va">mixed</span><span class="op">$</span><span class="va">terms</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">subtotal</span></span>
+<span><span class="co">#&gt; [1] 4</span></span></code></pre></div>
+</div>
+<p>A <code>-</code> before a term subtracts it, and a keep selector still applies within its own term, as in <code>2d20h+2d20l</code> (advantage plus disadvantage) or <code>2d20h-1d6</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"2d20h+2d20l"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;roll&gt; 2d20h+2d20l</span></span>
+<span><span class="co">#&gt; Dice:  4, 7</span></span>
+<span><span class="co">#&gt; Kept:  7</span></span>
+<span><span class="co">#&gt; Dice:  1, 2</span></span>
+<span><span class="co">#&gt; Kept:  1</span></span>
+<span><span class="co">#&gt; Total: 8</span></span></code></pre></div>
+</div>
 </section><section class="level2"><h2 id="summarise-many-rolls">Summarise many rolls<a class="anchor" aria-label="anchor" href="#summarise-many-rolls"></a>
 </h2>
 <p><code><a href="../reference/roll_distribution.html">roll_distribution()</a></code> rolls the whole notation <code>n</code> times and summarises the distribution of totals. Its print method shows the possible total range, a count per observed outcome, and a text histogram.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"2d6"</span>, n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll_distribution&gt; 2d6</span></span>
@@ -147,7 +183,7 @@
 </div>
 <p>The returned <code>roll_distribution</code> object stores the observed totals in <code>counts</code>, a named integer vector whose names are the outcome totals (ascending, with zero-count outcomes dropped), plus the theoretical <code>range</code> of possible totals.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"2d6"</span>, n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
 <span><span class="va">d</span><span class="op">$</span><span class="va">counts</span></span>
 <span><span class="co">#&gt;   2   3   4   5   6   7   8   9  10  11  12 </span></span>
@@ -210,7 +246,36 @@
 </tbody>
 </table>
 <p>The keep selector follows the die size and comes before the modifier, so a full notation reads count, die size, optional keep selector, optional modifier, for example <code>4d6h3+1</code>.</p>
-<section class="level3"><h3 id="defaults">Defaults<a class="anchor" aria-label="anchor" href="#defaults"></a>
+<section class="level3"><h3 id="summing-several-terms">Summing several terms<a class="anchor" aria-label="anchor" href="#summing-several-terms"></a>
+</h3>
+<p>Several terms may be joined with <code>+</code> or <code>-</code> into one notation, and a bare integer is a constant term.</p>
+<table class="table caption-top">
+<thead><tr class="header">
+<th>Form</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>TERM + TERM</code></td>
+<td>Add each term’s contribution</td>
+<td><code>1d20+1d6</code></td>
+</tr>
+<tr class="even">
+<td><code>TERM - TERM</code></td>
+<td>Subtract a term’s whole contribution</td>
+<td><code>2d20h-1d6</code></td>
+</tr>
+<tr class="odd">
+<td><code>... + K</code></td>
+<td>A bare integer is a constant term</td>
+<td><code>1d20+1d6+3</code></td>
+</tr>
+</tbody>
+</table>
+<p>At least one dice term is required (a pure number like <code>3</code> is not valid notation), and each keep selector applies within its own term only.</p>
+<p>A bare <code>+M</code>/<code>-M</code> immediately after a dice term binds as that term’s modifier when the term has no modifier yet, exactly as in the single-term case: <code>1d6+3</code> is one dice term with modifier <code>+3</code>, and <code>2d6+2+1d4</code> is a modified dice term (<code>2d6+2</code>) plus a second dice term. A further signed integer, once the term already has a modifier, becomes a standalone constant term: <code>1d6+3+1</code> is a dice term with modifier <code>+3</code> plus a constant <code>+1</code>.</p>
+</section><section class="level3"><h3 id="defaults">Defaults<a class="anchor" aria-label="anchor" href="#defaults"></a>
 </h3>
 <ul>
 <li>A missing die count means one die (<code>d6</code> is the same as <code>1d6</code>).</li>

@@ -95,3 +95,18 @@ p +
 ```
 
 ![](distributions_files/figure-html/extend-1.png)
+
+## Multi-term notation
+
+The same [`plot()`](https://rdrr.io/r/graphics/plot.default.html) method
+works for a notation that sums several terms. Adding `1d20+1d6` combines
+a flat twenty-sided die with a six-sided die, spreading the total over a
+wider range than either die alone.
+
+``` r
+
+set.seed(7)
+plot(roll_distribution("1d20+1d6", n = 20000))
+```
+
+![](distributions_files/figure-html/multi-term-1.png)

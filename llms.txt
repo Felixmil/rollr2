@@ -46,6 +46,19 @@ roll("4d6h3")
 #> Total: 7
 ```
 
+A notation can also sum several terms and constants, joined with `+` or
+`-`.
+
+``` r
+
+set.seed(1)
+roll("1d20+1d6+3")
+#> <roll> 1d20+1d6+3
+#> Dice:  4
+#> Dice:  1
+#> Total: 8
+```
+
 ## Summarise a distribution
 
 [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)

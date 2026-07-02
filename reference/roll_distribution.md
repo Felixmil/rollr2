@@ -3,9 +3,11 @@
 Simulates `n` whole-notation rolls and summarises the distribution of
 the resulting totals. The distribution is sampled (not computed
 analytically), so results vary run to run unless a seed is fixed with
-[`set.seed()`](https://rdrr.io/r/base/Random.html). A keep selector
-(`h`/`l`) is applied per simulated roll before summing, so each total
-reflects the kept dice plus the modifier.
+[`set.seed()`](https://rdrr.io/r/base/Random.html). A notation may be a
+sum of several terms joined by `+`/`-`; each simulated roll draws every
+dice term, applies each term's keep selector (`h`/`l`) within that term
+before summing, and adds the term modifiers and any bare integer
+constants, so each total is the grand total across all terms.
 
 ## Usage
 
@@ -23,11 +25,14 @@ plot(x, ...)
 
 - notation:
 
-  A length-1 character string in the form `NdX`, `NdX+M`, `NdX-M`, or
-  the count-omitted `dX` variants (case-insensitive `d`,
-  whitespace-tolerant). An optional keep selector `h`/`l` with an
-  optional count may follow the die size (e.g. `2d20h`, `4d6h3`),
-  keeping the highest/lowest `K` dice per roll (defaulting to `K = 1`).
+  A length-1 character string. A single dice term is `NdX`, `NdX+M`,
+  `NdX-M`, or the count-omitted `dX` variants (case-insensitive `d`,
+  whitespace-tolerant), optionally with a keep selector `h`/`l` and an
+  optional count after the die size (e.g. `2d20h`, `4d6h3`), keeping the
+  highest/lowest `K` dice per roll (defaulting to `K = 1`). Several such
+  terms, plus bare integer constants, may be joined with `+` or `-` into
+  one notation (e.g. `1d20+1d6`, `2d20h+2d20l`); at least one dice term
+  is required and each keep selector applies within its own term only.
 
 - n:
 
@@ -47,10 +52,12 @@ plot(x, ...)
 
 A `roll_distribution` object: a list with `counts` (an integer vector of
 observed totals, named by outcome value, ordered ascending; zero-count
-outcomes are omitted), `range` (the theoretical `c(min, max)` of a
-total, `c(K + M, K * X + M)` where `K` is the kept count, equal to the
-die count `N` when there is no selector), `n`, the parsed components
-`dice_n`, `x`, `m`, `keep`, `keep_n`, and the original `notation`. Its
+outcomes are omitted), `range` (the theoretical `c(min, max)` of a grand
+total, the sum across terms of each term's own min/max plus the signed
+constants), `n`, `terms` (the parsed per-term breakdown), and the
+original `notation`. For a single-term notation the parsed components
+`dice_n`, `x`, `m`, `keep`, `keep_n` are also present at the top level;
+they are omitted for a multi-term notation. Its
 [`print()`](https://rdrr.io/r/base/print.html) method renders the counts
 and a text histogram for the console.
 
@@ -102,5 +109,35 @@ roll_distribution("4d6h3", n = 1000)
 #> 16 | #####################  73
 #> 17 | ###########  40
 #> 18 | #####  18
+#> 
+roll_distribution("1d20+1d6", n = 1000)
+#> <roll_distribution> 1d20+1d6
+#> Rolls: 1000  Possible total range: 2 to 26
+#> 
+#>  2 | #####  8
+#>  3 | ########## 17
+#>  4 | ############ 21
+#>  5 | ################ 27
+#>  6 | ##################### 35
+#>  7 | ########################## 45
+#>  8 | ############################ 47
+#>  9 | ######################### 42
+#> 10 | ######################################## 68
+#> 11 | ##################### 36
+#> 12 | ################################## 57
+#> 13 | ################################### 59
+#> 14 | ################################# 56
+#> 15 | ########################### 46
+#> 16 | ############################# 50
+#> 17 | ########################### 46
+#> 18 | ################################ 55
+#> 19 | ############################### 52
+#> 20 | ########################### 46
+#> 21 | ################################# 56
+#> 22 | ####################### 39
+#> 23 | ##################### 35
+#> 24 | ############ 21
+#> 25 | ############### 26
+#> 26 | ###### 10
 #> 
 ```

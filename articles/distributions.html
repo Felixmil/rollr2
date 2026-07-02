@@ -146,6 +146,20 @@
 </div>
 </div>
 </div>
+</section><section class="level2"><h2 id="multi-term-notation">Multi-term notation<a class="anchor" aria-label="anchor" href="#multi-term-notation"></a>
+</h2>
+<p>The same <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> method works for a notation that sums several terms. Adding <code>1d20+1d6</code> combines a flat twenty-sided die with a six-sided die, spreading the total over a wider range than either die alone.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"1d20+1d6"</span>, n <span class="op">=</span> <span class="fl">20000</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="distributions_files/figure-html/multi-term-1.png" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+</div>
 </section><script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);

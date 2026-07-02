@@ -87,12 +87,20 @@
 <span><span class="co">#&gt; Dice:  1, 4, 1, 2</span></span>
 <span><span class="co">#&gt; Kept:  4, 2, 1</span></span>
 <span><span class="co">#&gt; Total: 7</span></span></code></pre></div>
+<p>A notation can also sum several terms and constants, joined with <code>+</code> or <code>-</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"1d20+1d6+3"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;roll&gt; 1d20+1d6+3</span></span>
+<span><span class="co">#&gt; Dice:  4</span></span>
+<span><span class="co">#&gt; Dice:  1</span></span>
+<span><span class="co">#&gt; Total: 8</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="summarise-a-distribution">Summarise a distribution<a class="anchor" aria-label="anchor" href="#summarise-a-distribution"></a>
 </h2>
 <p><code><a href="reference/roll_distribution.html">roll_distribution()</a></code> rolls the whole notation many times and summarises the distribution of totals, printing a count per outcome and a text histogram.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/roll_distribution.html">roll_distribution</a></span><span class="op">(</span><span class="st">"2d6"</span>, n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll_distribution&gt; 2d6</span></span>
