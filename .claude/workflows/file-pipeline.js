@@ -1,0 +1,799 @@
+// The file-based issue pipeline as a dynamic Workflow.
+//
+// This is the workflow twin of skills/issue-pipeline/SKILL.md. It drives
+// one GitHub issue through spec -> plan -> build -> QA with all state and
+// all four artifacts on the local filesystem under <repo>.issues/<issue>/,
+// exactly as the skill does, and it spawns the same four file-writing
+// agents for the heavy per-phase work. The GitHub issue is only the
+// input; a pull request is only the ship channel; nothing is posted to
+// the issue thread.
+//
+// Why a workflow when the interactive file-pipeline skill already
+// exists: that skill runs the whole loop in the session's own context so
+// it can call AskUserQuestion and continue in the SAME run. A workflow's
+// agent() calls are subagents and cannot prompt, and the workflow
+// runtime has no prompt primitive of its own. So this workflow cannot
+// ask a question mid-run. Instead, whenever a human decision is needed
+// (an agent raised a clarification, or a manual gate needs
+// approve/revise, or a dependency is missing) it persists the question
+// to state.json.pendingQuestion and RETURNS a small typed object
+// describing what it is waiting on. It never guesses.
+//
+// A thin session-context shell (skills/file-pipeline-workflow/SKILL.md)
+// is what makes that feel continuous to a human: the shell launches this
+// workflow, reads the returned "waiting" object, calls AskUserQuestion
+// itself (it can, being in the session), and relaunches this workflow
+// with the answer as an arg. Relaunch uses resumeFromRunId, so every
+// phase already completed replays from cache instantly and only the
+// answer-consuming call onward runs live. From the human's seat it is
+// one continuous ask/answer/continue; under the hood it is
+// stop-and-resume across the answer.
+//
+// This engine and its shell are a third entry point alongside the two
+// pre-existing ones: the interactive file-pipeline skill (same local
+// storage, but drives the loop itself in-session) and the gh-posting
+// gh-pipeline workflow (state in GitHub labels, artifacts on threads).
+//
+// The workflow is equally drivable headless with no shell at all: pass
+// answers as args directly (see parseArgs). auto mode raises no question
+// by construction, so it runs straight through with no shell and no
+// relaunch.
+//
+// Run with (normally via the shell, but directly too):
+//   Workflow({ scriptPath: ".claude/workflows/file-pipeline.js",
+//              args: { issueNumber: 142, mode: "semi-auto" } })
+//   Workflow({ scriptPath: "...", args: { issueNumber: 142, answer: "..." } })
+//   Workflow({ scriptPath: "...", args: { issueNumber: 142, directive: { kind: "approve" } } })
+//   Workflow({ scriptPath: "...", args: { issueNumber: 142, mode: "merge" } })
+//
+// Requires .claude/scripts/issue-state-transition.sh copied into the
+// target repo, and the four file-writing agents from this plugin
+// installed (spec-writer-agent, plan-writer-agent,
+// build-runner-agent, qa-review-agent).
+
+export const meta = {
+  name: "file-pipeline",
+  description:
+    "Drive one GitHub issue through spec -> plan -> build -> qa with state and artifacts on the local filesystem; stop-and-return on any human decision",
+  phases: [{ title: "Spec" }, { title: "Plan" }, { title: "Build" }, { title: "QA" }],
+};
+
+// In auto/semi-auto, a QA rejection loops straight back to build, up to
+// this many build -> QA rounds, before leaving the issue at in-progress
+// for a human. Matches the skill and the gh-posting workflow.
+const MAX_QA_ROUNDS = 3;
+
+const TRANSITION = ".claude/scripts/issue-state-transition.sh";
+
+// Phase definitions. entryStatus is the state.json.status this phase runs
+// from; agentType is the file-writing agent; the artifact filename is
+// fixed. Build has a two-step transition (into in-progress, then out to
+// ai-review) that the phase loop handles specially.
+const PHASE_DEFS = [
+  {
+    key: "spec",
+    label: "Spec",
+    artifact: "spec.md",
+    entryStatus: ["open"],
+    toStatus: "spec-ready",
+    gateStatus: "spec-awaiting-approval",
+    agentType: "spec-writer-agent",
+  },
+  {
+    key: "plan",
+    label: "Plan",
+    artifact: "plan.md",
+    entryStatus: ["spec-ready"],
+    toStatus: "ready-for-dev",
+    gateStatus: "plan-awaiting-approval",
+    agentType: "plan-writer-agent",
+  },
+  {
+    key: "build",
+    label: "Build",
+    artifact: "build.md",
+    entryStatus: ["ready-for-dev", "in-progress", "blocked"],
+    // Build's entry is its own transition (ready-for-dev/blocked ->
+    // in-progress), skipped when already at in-progress. toStatus is
+    // applied after the agent completes.
+    startStatus: "in-progress",
+    toStatus: "ai-review",
+    gateStatus: "build-awaiting-approval",
+    agentType: "build-runner-agent",
+  },
+  {
+    key: "qa",
+    label: "QA",
+    artifact: "qa.md",
+    entryStatus: ["ai-review"],
+    // No single toStatus: the verdict picks human-review vs in-progress.
+    gateStatus: "qa-awaiting-approval",
+    agentType: "qa-review-agent",
+  },
+];
+
+// The structured return the four file-writing agents already produce
+// (see agents/*-writer-agent.md, *-runner-agent.md, *-review-agent.md).
+const AGENT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["status"],
+  properties: {
+    status: { type: "string", enum: ["done", "clarification-needed"] },
+    question: { type: "string" },
+    options: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["label", "description"],
+        properties: { label: { type: "string" }, description: { type: "string" } },
+      },
+    },
+    recommendedDefault: { type: "string" },
+  },
+};
+
+// ---- bookkeeping helpers (all on Haiku, structured where a chatty or
+// empty plain-text result could otherwise be mistaken for real content
+// and stall the loop, exactly as the gh-posting workflow does) ----
+
+// The issues state root (a sibling of the checkout named <repo>.issues)
+// and the per-issue folder, derived from git so all worktrees of one
+// repo share one root. Returns absolute paths.
+async function resolvePaths(issue) {
+  const out = await agent(
+    `Run: git rev-parse --git-common-dir. That prints a path ending in "/.git" (or ".git"); resolve it to ` +
+      `an absolute path, take its parent directory as the repo root, and set repoName to that directory's ` +
+      `basename and parentDir to that directory's parent (both absolute).`,
+    {
+      label: "resolve-paths",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["parentDir", "repoName"],
+        properties: {
+          parentDir: { type: "string", description: "Absolute path to the directory containing the repo root." },
+          repoName: { type: "string", description: "Basename of the repo root directory." },
+        },
+      },
+    },
+  );
+  const root = `${out.parentDir}/${out.repoName}.issues`;
+  return { root, dir: `${root}/${issue}` };
+}
+
+// Read the whole state.json as an object. Returns null if the file does
+// not exist yet.
+async function readState(dir) {
+  const out = await agent(
+    `Run: cat ${dir}/state.json 2>/dev/null. If the file does not exist or stdout is empty, set exists to ` +
+      `false and leave state null. Otherwise set exists true and state to the parsed JSON object.`,
+    {
+      label: "read-state",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["exists"],
+        properties: {
+          exists: { type: "boolean" },
+          state: { type: ["object", "null"], additionalProperties: true },
+        },
+      },
+    },
+  );
+  return out?.exists ? (out.state ?? null) : null;
+}
+
+// Bootstrap the folder and a fresh state.json if absent. Returns the
+// current state object either way.
+async function ensureState(dir, mode) {
+  const existing = await readState(dir);
+  if (existing) {
+    return existing;
+  }
+  const seed = {
+    status: "open",
+    mode,
+    prNumber: null,
+    qaVerdict: null,
+    pendingQuestion: null,
+    dependsOn: [],
+  };
+  await agent(
+    `Run: mkdir -p ${dir} && cat > ${dir}/state.json <<'JSON'\n${JSON.stringify(seed, null, 2)}\nJSON`,
+    { label: "seed-state", model: "haiku" },
+  );
+  return seed;
+}
+
+// Write one or more non-status fields into state.json. NEVER writes
+// status: only the transition script moves the machine. Merges the given
+// fields over the existing object with jq so untouched fields survive.
+async function patchState(dir, fields) {
+  if ("status" in fields) {
+    throw new Error("patchState must never write status; use transitionTo (the validated script) instead.");
+  }
+  const filter = Object.keys(fields)
+    .map((k) => `.${k} = $patch.${k}`)
+    .join(" | ");
+  await agent(
+    `Run exactly: jq --argjson patch '${JSON.stringify(fields)}' '${filter}' ${dir}/state.json > ${dir}/.state.tmp ` +
+      `&& mv ${dir}/.state.tmp ${dir}/state.json`,
+    { label: "patch-state", model: "haiku" },
+  );
+}
+
+// Move the state machine through the single validated mutator. A
+// non-zero exit (illegal transition, missing file) is a hard failure:
+// surface it, never force it through with a different target.
+async function transitionTo(root, issue, to) {
+  const out = await agent(
+    `Run: bash ${TRANSITION} ${root} ${issue} ${to}. Set ok to true only if the command exited 0; ` +
+      `otherwise set ok false and put the stderr text in error.`,
+    {
+      label: "transition",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ok"],
+        properties: { ok: { type: "boolean" }, error: { type: "string" } },
+      },
+    },
+  );
+  if (!out?.ok) {
+    throw new Error(`Transition ${issue} -> ${to} failed: ${out?.error ?? "unknown error"}`);
+  }
+}
+
+// The pull request GitHub considers linked to this issue (via Closes #N),
+// or null. Re-derived fresh every call, never trusted from a cache.
+async function findLinkedPr(issue) {
+  const out = await agent(
+    `Run: gh repo view --json owner,name --jq '.owner.login + " " + .name'. Then run exactly: ` +
+      `gh api graphql -f query='query { repository(owner: "OWNER", name: "NAME") { issue(number: ${issue}) { ` +
+      `closedByPullRequestsReferences(first: 5) { nodes { number } } } } }' with OWNER and NAME substituted ` +
+      `from the first command. Set prNumber to the first node's number, or null if there are none.`,
+    {
+      label: "find-linked-pr",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["prNumber"],
+        properties: { prNumber: { type: ["integer", "null"] } },
+      },
+    },
+  );
+  return typeof out?.prNumber === "number" ? out.prNumber : null;
+}
+
+// Read the last QA-VERDICT: line out of qa.md itself (never trust the
+// agent's summary of its own verdict). Returns "approved" | "rejected".
+async function readQaVerdict(dir) {
+  const out = await agent(
+    `Run: grep -o 'QA-VERDICT: [a-z]*' ${dir}/qa.md | tail -1. Set verdict to "approved" if that line ends ` +
+      `in approved, otherwise "rejected".`,
+    {
+      label: "read-qa-verdict",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["verdict"],
+        properties: { verdict: { type: "string", enum: ["approved", "rejected"] } },
+      },
+    },
+  );
+  return out?.verdict === "approved" ? "approved" : "rejected";
+}
+
+// Confirm an artifact was actually written and is non-empty (never trust
+// the agent's "I wrote the file").
+async function artifactExists(dir, filename) {
+  const out = await agent(
+    `Run: test -s ${dir}/${filename} && echo yes || echo no. Set present to true only if stdout is "yes".`,
+    {
+      label: "check-artifact",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["present"],
+        properties: { present: { type: "boolean" } },
+      },
+    },
+  );
+  return Boolean(out?.present);
+}
+
+// Resolve the read-only dependency artifact paths for this issue. Returns
+// { paths: [...], missing: [issueNumbers] }. paths are spec.md/plan.md of
+// each depended-on issue that exists; missing lists depended-on issues
+// whose folder/artifacts are not there yet.
+async function resolveDependencyPaths(root, dependsOn) {
+  if (!Array.isArray(dependsOn) || dependsOn.length === 0) {
+    return { paths: [], missing: [] };
+  }
+  const out = await agent(
+    `For each issue number in ${JSON.stringify(dependsOn)}, check whether ${root}/<n>/spec.md and ` +
+      `${root}/<n>/plan.md exist. Collect the absolute paths that exist into paths, and the issue numbers ` +
+      `for which neither exists into missing.`,
+    {
+      label: "resolve-deps",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["paths", "missing"],
+        properties: {
+          paths: { type: "array", items: { type: "string" } },
+          missing: { type: "array", items: { type: "integer" } },
+        },
+      },
+    },
+  );
+  return { paths: out?.paths ?? [], missing: out?.missing ?? [] };
+}
+
+// ---- phase agent invocation ----
+
+// Build the read-only context line handed to a phase agent: this issue's
+// upstream artifacts plus any dependency artifacts.
+function readOnlyPaths(dir, def, depPaths) {
+  const upstream = { plan: ["spec.md"], build: ["spec.md", "plan.md"], qa: ["spec.md", "plan.md"] };
+  const own = (upstream[def.key] ?? []).map((f) => `${dir}/${f}`);
+  return [...own, ...depPaths];
+}
+
+// Invoke a phase's file-writing agent. `answer` is a resolved
+// clarification to fold in (or null on the first attempt). Returns the
+// agent's structured object ({status:"done"} or {status:"clarification-needed",...}).
+async function runPhaseAgent(issue, dir, def, { mode, answer, depPaths, prNumber }) {
+  const artifactPath = `${dir}/${def.artifact}`;
+  const reads = readOnlyPaths(dir, def, depPaths);
+  const readsLine = reads.length ? ` Read-only context paths: ${reads.join(", ")}.` : "";
+  const autoLine =
+    mode === "auto"
+      ? ` You are in auto mode: never raise a question. On any ambiguity adopt your own recommended default, ` +
+        `record that decision in the artifact, and return {"status":"done"}.`
+      : "";
+  const answerLine = answer
+    ? ` A human answered your open question: "${answer}". Fold it in as a locked decision, do not re-ask it, ` +
+      `and write the final artifact.`
+    : "";
+
+  let task;
+  if (def.key === "spec") {
+    task = `Read GitHub issue ${issue} and write its specification to the exact path ${artifactPath}.`;
+  } else if (def.key === "plan") {
+    task = `Read this issue's spec at ${dir}/spec.md and write the implementation plan for GitHub issue ${issue} to ${artifactPath}.`;
+  } else if (def.key === "build") {
+    task =
+      `Implement GitHub issue ${issue} per its spec (${dir}/spec.md) and plan (${dir}/plan.md). Open or update the ` +
+      `pull request with a clean, repo-facing body containing "Closes #${issue}". Then write the fuller build ` +
+      `summary to ${artifactPath}. Do not post any issue or pull request comment.`;
+  } else {
+    const prLine = prNumber ? ` The linked pull request is #${prNumber}.` : "";
+    task =
+      `Review the pull request for GitHub issue ${issue} against ${dir}/spec.md and ${dir}/plan.md, and write ` +
+      `the QA report to ${artifactPath} ending in exactly one "QA-VERDICT: approved" or "QA-VERDICT: rejected" ` +
+      `line.${prLine} Do not post any issue or pull request comment.`;
+  }
+
+  return await agent(`${task}${readsLine}${autoLine}${answerLine}`, {
+    agentType: def.agentType,
+    phase: def.label,
+    schema: AGENT_SCHEMA,
+  });
+}
+
+// Route a QA-rejection (or a QA-gate revise) back to the build agent as
+// fixup feedback: QA's reasoning belongs in the code, not re-reviewed.
+async function fixupBuild(issue, dir, buildDef, qaReportPath, feedback) {
+  const extra = feedback ? ` Additional human feedback: ${feedback}` : "";
+  return await agent(
+    `Read GitHub issue ${issue}. The QA report at ${qaReportPath} rejected the pull request. Address every ` +
+      `finding at its root cause against ${dir}/spec.md and ${dir}/plan.md, push to the same pull request branch, ` +
+      `rerun relevant verification, and update ${dir}/build.md. Do not post any pull request comment.${extra}`,
+    { agentType: buildDef.agentType, phase: "Build", schema: AGENT_SCHEMA },
+  );
+}
+
+// Revise a spec/plan artifact in place from human feedback. Editorial, so
+// it runs on the cheaper model (matching the gh-posting workflow).
+async function reviseArtifact(issue, dir, def, feedback) {
+  return await agent(
+    `Read GitHub issue ${issue}. A human requested changes to ${dir}/${def.artifact}: "${feedback}". Revise the ` +
+      `artifact in place at that path with the changes folded in. Return {"status":"done"}.`,
+    { agentType: def.agentType, phase: "Revise", model: "sonnet", schema: AGENT_SCHEMA },
+  );
+}
+
+// ---- the waiting-return builders: how the workflow hands control back
+// to the shell (or a headless caller). Each persists pendingQuestion
+// first, then returns a typed object the shell reads to know what to
+// AskUserQuestion about. ----
+
+async function stopForQuestion(dir, issue, phaseKey, q) {
+  const pending = {
+    phase: phaseKey,
+    kind: "clarification",
+    question: q.question,
+    options: q.options,
+    recommendedDefault: q.recommendedDefault,
+  };
+  await patchState(dir, { pendingQuestion: pending });
+  log(`Issue ${issue} is waiting on a ${phaseKey} clarification. Answer it and relaunch with args.answer.`);
+  return { issue, status: "question", pendingQuestion: pending };
+}
+
+async function stopForGate(dir, issue, phaseKey, gateStatus) {
+  const pending = {
+    phase: phaseKey,
+    kind: "gate",
+    question: `The ${phaseKey} artifact is written. Approve it, or request a revision?`,
+    options: [
+      { label: "Approve", description: "Accept the artifact and advance to the next phase." },
+      { label: "Revise", description: "Send feedback back into this phase and re-write the artifact." },
+    ],
+    recommendedDefault: "Approve",
+  };
+  await patchState(dir, { pendingQuestion: pending });
+  log(`Issue ${issue} is at the ${gateStatus} gate. Relaunch with args.directive ({kind:"approve"} or {kind:"revise",feedback:"..."}).`);
+  return { issue, status: "gate", gate: gateStatus, pendingQuestion: pending };
+}
+
+async function stopForDependency(dir, issue, missing) {
+  const pending = {
+    phase: "dependency",
+    kind: "dependency",
+    question: `Depended-on issue(s) ${missing.join(", ")} have no artifacts yet. Proceed without them, or wait?`,
+    options: [
+      { label: "Proceed", description: "Run this phase without the missing dependency artifacts." },
+      { label: "Wait", description: "Stop until the depended-on issue's artifacts exist." },
+    ],
+    recommendedDefault: "Proceed",
+  };
+  await patchState(dir, { pendingQuestion: pending });
+  log(`Issue ${issue} depends on ${missing.join(", ")} which have no artifacts yet. Relaunch with args.directive.`);
+  return { issue, status: "dependency", missing, pendingQuestion: pending };
+}
+
+// ---- args ----
+
+// args arrives as one of:
+//   { issueNumber, mode?, answer?, directive? }        (object; the shell/programmatic form)
+//   '{"issueNumber":142,...}'                            (that object re-serialized to a string
+//                                                          by some resume/relaunch paths)
+//   142 | "142" | "142 manual"                           (bare number / slash-command tokens)
+// answer and directive only arrive through the object form; there is no
+// slash-command syntax for them (the shell always uses the object form).
+function parseArgs(rawArgs) {
+  let value = rawArgs;
+  if (typeof value === "string" && value.trim().startsWith("{")) {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      // Not JSON after all; fall through to token parsing.
+    }
+  }
+  if (typeof value === "object" && value !== null) {
+    return {
+      issue: value.issueNumber,
+      mode: value.mode,
+      answer: value.answer,
+      directive: value.directive,
+    };
+  }
+  const tokens = String(value ?? "").trim().split(/\s+/).filter(Boolean);
+  return { issue: tokens[0], mode: tokens[1], answer: undefined, directive: undefined };
+}
+
+const parsed = parseArgs(args);
+const issue = parsed.issue;
+if (!issue) {
+  throw new Error(
+    'Missing issue number. Pass args: { issueNumber: N, mode: "auto"|"semi-auto"|"manual"|"merge" }, or "N" / "N manual".',
+  );
+}
+
+const { root, dir } = await resolvePaths(issue);
+
+// merge is a standalone terminal action, resolved before any state
+// bootstrap or phase logic.
+if (parsed.mode === "merge") {
+  const state = await readState(dir);
+  if (!state || state.status !== "human-review") {
+    throw new Error(
+      `Issue ${issue} is at ${state?.status ?? "no state"}, not human-review. Refusing to merge until a human reached that gate.`,
+    );
+  }
+  const pr = await findLinkedPr(issue);
+  if (!pr) {
+    throw new Error(`Issue ${issue} is at human-review but no linked pull request was found.`);
+  }
+  await agent(`Run: gh pr merge ${pr} --squash --delete-branch`, { label: "merge-pr", model: "haiku" });
+  await transitionTo(root, issue, "closed");
+  log(`Issue ${issue} merged pull request ${pr} (squash) and transitioned to closed.`);
+  return { issue, status: "merged", pr };
+}
+
+// Bootstrap / load state. A caller-supplied mode word is written in (a
+// rerun may change the mode); otherwise the persisted mode wins, and a
+// brand-new issue defaults to semi-auto.
+let state = await ensureState(dir, parsed.mode ?? "semi-auto");
+if (parsed.mode && parsed.mode !== state.mode) {
+  await patchState(dir, { mode: parsed.mode });
+  state.mode = parsed.mode;
+}
+const mode = state.mode;
+if (mode !== "auto" && mode !== "semi-auto" && mode !== "manual") {
+  throw new Error(`Unknown mode "${mode}". Use "auto", "semi-auto", "manual", or "merge".`);
+}
+
+const buildDef = PHASE_DEFS.find((d) => d.key === "build");
+
+// Set true only when the human answered a missing-dependency question
+// with "proceed": the phase loop then runs that phase with whatever
+// dependency artifacts exist and does not re-stop on the still-missing
+// ones. Scoped to this one invocation (the decision is not persisted).
+let proceedPastMissingDeps = false;
+
+// ---- resume a pending question first, before any phase ----
+//
+// A relaunch that carries an answer/directive is resolving whatever
+// pendingQuestion holds. We consume the persisted question, clear it,
+// and route the answer as if it had just been raised. A relaunch with no
+// answer/directive while a question is still pending re-stops (the shell
+// will re-ask); it never guesses.
+if (state.pendingQuestion) {
+  const pq = state.pendingQuestion;
+  const hasResponse = parsed.answer !== undefined || parsed.directive !== undefined;
+  if (!hasResponse) {
+    log(`Issue ${issue} still has an unanswered ${pq.kind} on the ${pq.phase} phase; re-stopping for the shell to re-ask.`);
+    return {
+      issue,
+      status: pq.kind === "gate" ? "gate" : pq.kind === "dependency" ? "dependency" : "question",
+      pendingQuestion: pq,
+      gate: pq.kind === "gate" ? `${pq.phase}-awaiting-approval` : undefined,
+    };
+  }
+
+  // Clear the question now that we have a response; every branch below
+  // works from a cleared pendingQuestion.
+  await patchState(dir, { pendingQuestion: null });
+  state.pendingQuestion = null;
+
+  const def = PHASE_DEFS.find((d) => d.key === pq.phase);
+
+  if (pq.kind === "dependency") {
+    // Proceed => fall through into the phase loop, but remember the
+    // decision so the loop does not re-detect the same missing dependency
+    // and stop again in a loop. Wait => stop cleanly.
+    if (parsed.directive?.kind === "wait") {
+      log(`Issue ${issue}: human chose to wait on the missing dependency; stopping without advancing.`);
+      return { issue, status: "waiting", reason: "dependency" };
+    }
+    proceedPastMissingDeps = true;
+    // Proceed: fall through to the phase loop below.
+  } else if (pq.kind === "clarification") {
+    // Re-run this phase's agent with the answer folded in. It may raise
+    // another question (stop again), or finish (advance / gate).
+    const { paths: depPaths } = await resolveDependencyPaths(root, state.dependsOn ?? []);
+    const result = await runPhaseAgent(issue, dir, def, {
+      mode,
+      answer: parsed.answer,
+      depPaths,
+      prNumber: state.prNumber,
+    });
+    if (result.status === "clarification-needed") {
+      return await stopForQuestion(dir, issue, def.key, result);
+    }
+    if (def.key === "qa") {
+      // QA has its own gate / rejection-loop / verdict-transition, not the
+      // generic advance. Verify, read the verdict, and hand off to the
+      // shared QA driver (which also handles manual mode's gate).
+      if (!(await artifactExists(dir, "qa.md"))) {
+        throw new Error(`QA returned done but ${dir}/qa.md is missing or empty.`);
+      }
+      const verdict = await readQaVerdict(dir);
+      await patchState(dir, { qaVerdict: verdict });
+      const driven = await driveQaFromVerdict(verdict);
+      if (driven.stopped) {
+        return driven.value;
+      }
+    } else {
+      const advanced = await advancePhaseAfterAgent(def);
+      if (advanced?.stopped) {
+        return advanced.value;
+      }
+    }
+    state = await readState(dir);
+  } else if (pq.kind === "gate") {
+    // Manual-mode approve/revise on a written artifact.
+    if (parsed.directive?.kind === "revise") {
+      if (def.key === "qa") {
+        await fixupBuild(issue, dir, buildDef, `${dir}/qa.md`, parsed.directive.feedback);
+        // QA re-runs after the build fixup, then re-gates.
+        const qaResult = await runPhaseAgent(issue, dir, PHASE_DEFS.find((d) => d.key === "qa"), {
+          mode,
+          depPaths: [],
+          prNumber: state.prNumber,
+        });
+        if (qaResult.status === "clarification-needed") {
+          return await stopForQuestion(dir, issue, "qa", qaResult);
+        }
+        await patchState(dir, { qaVerdict: await readQaVerdict(dir) });
+        return await stopForGate(dir, issue, "qa", def.gateStatus);
+      }
+      const revised = await reviseArtifact(issue, dir, def, parsed.directive.feedback);
+      if (revised.status === "clarification-needed") {
+        return await stopForQuestion(dir, issue, def.key, revised);
+      }
+      return await stopForGate(dir, issue, def.key, def.gateStatus);
+    }
+    // approve: perform the real transition this phase produces, then
+    // fall through into the phase loop for the next phase.
+    if (def.key === "qa") {
+      const verdict = state.qaVerdict ?? (await readQaVerdict(dir));
+      await transitionTo(root, issue, verdict === "approved" ? "human-review" : "in-progress");
+    } else {
+      await transitionTo(root, issue, def.toStatus);
+    }
+    state = await readState(dir);
+  }
+}
+
+// ---- the phase loop ----
+//
+// Runs the phase whose entryStatus matches the current status, advances,
+// and continues, until a phase stops for a human decision or nothing is
+// left to drive. `advancePhaseAfterAgent` centralises the post-agent
+// artifact-check / gate / transition so the resume branch above and the
+// loop share it.
+
+// Given a def whose agent just returned "done", verify the artifact,
+// apply the manual gate if any, otherwise transition to the next status.
+// Returns { stopped: true, value } if it stopped for a human, or
+// { stopped: false } to continue the loop.
+async function advancePhaseAfterAgent(def) {
+  if (!(await artifactExists(dir, def.artifact))) {
+    throw new Error(`Phase ${def.key} returned done but ${dir}/${def.artifact} is missing or empty.`);
+  }
+
+  if (def.key === "build") {
+    const pr = await findLinkedPr(issue);
+    if (pr) {
+      await patchState(dir, { prNumber: pr });
+    }
+  }
+  if (def.key === "qa") {
+    await patchState(dir, { qaVerdict: await readQaVerdict(dir) });
+  }
+
+  if (mode === "manual") {
+    await transitionTo(root, issue, def.gateStatus);
+    return { stopped: true, value: await stopForGate(dir, issue, def.key, def.gateStatus) };
+  }
+
+  // auto / semi-auto: advance immediately.
+  if (def.key === "qa") {
+    // QA never advances through here; use driveQaFromVerdict instead.
+    return { stopped: false };
+  }
+  await transitionTo(root, issue, def.toStatus);
+  return { stopped: false };
+}
+
+// Post-QA handling shared by the phase loop and the resume branch. Given
+// the verdict already read from qa.md (and cached in state), it applies
+// the manual gate, or the auto/semi-auto build -> QA rejection loop (up
+// to MAX_QA_ROUNDS), or the final human-review/in-progress transition.
+// Returns { stopped: true, value } to bubble a return up, or
+// { stopped: false } when QA approved and the loop should continue.
+async function driveQaFromVerdict(initialVerdict) {
+  const qaDef = PHASE_DEFS.find((d) => d.key === "qa");
+  let verdict = initialVerdict;
+
+  if (mode === "manual") {
+    await transitionTo(root, issue, qaDef.gateStatus);
+    return { stopped: true, value: await stopForGate(dir, issue, "qa", qaDef.gateStatus) };
+  }
+
+  let round = 1;
+  while (verdict === "rejected" && round < MAX_QA_ROUNDS) {
+    round += 1;
+    await transitionTo(root, issue, "in-progress");
+    phase("Build");
+    const fix = await fixupBuild(issue, dir, buildDef, `${dir}/qa.md`, null);
+    if (fix.status === "clarification-needed") {
+      // Only possible outside auto; surface it.
+      return { stopped: true, value: await stopForQuestion(dir, issue, "build", fix) };
+    }
+    await transitionTo(root, issue, "ai-review");
+    phase("QA");
+    const result = await runPhaseAgent(issue, dir, qaDef, { mode, depPaths: [], prNumber: state.prNumber });
+    if (result.status === "clarification-needed") {
+      return { stopped: true, value: await stopForQuestion(dir, issue, "qa", result) };
+    }
+    verdict = await readQaVerdict(dir);
+    await patchState(dir, { qaVerdict: verdict });
+  }
+
+  if (verdict === "rejected") {
+    await transitionTo(root, issue, "in-progress");
+    log(`Issue ${issue} still rejected after ${round} QA rounds; left at in-progress for a human.`);
+    return { stopped: true, value: { issue, status: "rejected", rounds: round } };
+  }
+  await transitionTo(root, issue, "human-review");
+  log(`Issue ${issue} QA approved after ${round} round(s).`);
+  return { stopped: false };
+}
+
+// Re-read fresh in case the resume branch advanced us.
+state = await readState(dir);
+
+for (const def of PHASE_DEFS) {
+  if (!def.entryStatus.includes(state.status)) {
+    continue;
+  }
+
+  phase(def.label);
+
+  // Dependency resolution (spec/plan/build read dependency artifacts).
+  let depPaths = [];
+  if (def.key !== "qa") {
+    const deps = await resolveDependencyPaths(root, state.dependsOn ?? []);
+    if (deps.missing.length > 0 && !proceedPastMissingDeps) {
+      return await stopForDependency(dir, issue, deps.missing);
+    }
+    depPaths = deps.paths;
+  }
+
+  // Build's own entry transition (into in-progress), skipped if already there.
+  if (def.startStatus && state.status !== def.startStatus) {
+    await transitionTo(root, issue, def.startStatus);
+    state = await readState(dir);
+  }
+
+  if (def.key === "qa") {
+    const result = await runPhaseAgent(issue, dir, def, { mode, depPaths: [], prNumber: state.prNumber });
+    if (result.status === "clarification-needed") {
+      return await stopForQuestion(dir, issue, "qa", result);
+    }
+    if (!(await artifactExists(dir, def.artifact))) {
+      throw new Error(`QA returned done but ${dir}/qa.md is missing or empty.`);
+    }
+    const verdict = await readQaVerdict(dir);
+    await patchState(dir, { qaVerdict: verdict });
+    const driven = await driveQaFromVerdict(verdict);
+    if (driven.stopped) {
+      return driven.value;
+    }
+    state = await readState(dir);
+    continue;
+  }
+
+  // spec / plan / build: run the agent, possibly stop for a question,
+  // else verify + gate/advance.
+  const result = await runPhaseAgent(issue, dir, def, {
+    mode,
+    depPaths,
+    prNumber: state.prNumber,
+  });
+  if (result.status === "clarification-needed") {
+    return await stopForQuestion(dir, issue, def.key, result);
+  }
+  const advanced = await advancePhaseAfterAgent(def);
+  if (advanced.stopped) {
+    return advanced.value;
+  }
+  state = await readState(dir);
+}
+
+log(`Issue ${issue} is at ${state.status}; nothing left for this workflow to drive.`);
+return { issue, status: "done", state: state.status };

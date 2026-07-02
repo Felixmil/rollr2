@@ -1,16 +1,16 @@
 // Copy this file into a target repo's .claude/workflows/ directory
 // (plugins cannot distribute Workflow scripts today; only agents/
-// are plugin-discoverable). Requires .claude/scripts/odt-transition.sh to
+// are plugin-discoverable). Requires .claude/scripts/status-transition.sh to
 // also be copied into that repo's scripts/ directory, and the four
 // agents from this plugin to be installed.
 //
 // Run with:
-//   Workflow({ scriptPath: ".claude/workflows/openducktor-issue.js", args: { issueNumber: 142, mode: "auto" } })
-//   Workflow({ scriptPath: ".claude/workflows/openducktor-issue.js", args: { issueNumber: 142, mode: "manual" } })
-//   Workflow({ scriptPath: ".claude/workflows/openducktor-issue.js", args: { issueNumber: 142, mode: "merge" } })
-// or as a slash command: /openducktor-issue 142 (auto mode)
-//                     or: /openducktor-issue 142 manual (manual mode)
-//                     or: /openducktor-issue 142 merge (merge mode)
+//   Workflow({ scriptPath: ".claude/workflows/gh-pipeline.js", args: { issueNumber: 142, mode: "auto" } })
+//   Workflow({ scriptPath: ".claude/workflows/gh-pipeline.js", args: { issueNumber: 142, mode: "manual" } })
+//   Workflow({ scriptPath: ".claude/workflows/gh-pipeline.js", args: { issueNumber: 142, mode: "merge" } })
+// or as a slash command: /gh-pipeline 142 (auto mode)
+//                     or: /gh-pipeline 142 manual (manual mode)
+//                     or: /gh-pipeline 142 merge (merge mode)
 //
 // auto mode: identical to the original script. Every phase's output
 // is immediately approved and the pipeline runs straight through to
@@ -53,7 +53,7 @@
 // branch, and transitions the issue to status:closed.
 
 export const meta = {
-  name: "openducktor-issue",
+  name: "gh-pipeline",
   description:
     "Drive one GitHub issue through spec -> plan -> build -> qa, auto or gated on human approval",
   phases: [{ title: "Spec" }, { title: "Plan" }, { title: "Build" }, { title: "QA" }],
@@ -77,13 +77,13 @@ const PHASE_DEFS = [
   {
     key: "spec",
     label: "Spec",
-    tag: "<!-- odt:spec -->",
+    tag: "<!-- gh-pipeline:spec -->",
     // No PR exists yet at this point; spec and plan live on the issue.
     commentTarget: "issue",
     fromStatus: ["status:open"],
     gateLabel: "status:spec-awaiting-approval",
     toStatus: "status:spec-ready",
-    agentType: "openducktor-agents:spec-agent",
+    agentType: "spec-agent",
     kickoff: (issue) => `Read GitHub issue ${issue} and write its specification.`,
     revisePrompt: (issue, feedback) =>
       `Read GitHub issue ${issue}. A human requested changes to the posted spec: "${feedback}". ` +
@@ -100,12 +100,12 @@ const PHASE_DEFS = [
   {
     key: "plan",
     label: "Plan",
-    tag: "<!-- odt:plan -->",
+    tag: "<!-- gh-pipeline:plan -->",
     commentTarget: "issue",
     fromStatus: ["status:spec-ready"],
     gateLabel: "status:plan-awaiting-approval",
     toStatus: "status:ready-for-dev",
-    agentType: "openducktor-agents:planner-agent",
+    agentType: "planner-agent",
     kickoff: (issue) => `Read GitHub issue ${issue}'s spec and write its implementation plan.`,
     revisePrompt: (issue, feedback) =>
       `Read GitHub issue ${issue}. A human requested changes to the posted plan: "${feedback}". ` +
@@ -122,7 +122,7 @@ const PHASE_DEFS = [
   {
     key: "build",
     label: "Build",
-    tag: "<!-- odt:build -->",
+    tag: "<!-- gh-pipeline:build -->",
     // The pull request this phase creates is what QA and any human
     // review actually looks at. The initial completion summary is
     // the pull request's own body/description, not a comment, since
@@ -149,7 +149,7 @@ const PHASE_DEFS = [
     startStatus: "status:in-progress",
     gateLabel: "status:build-awaiting-approval",
     toStatus: "status:ai-review",
-    agentType: "openducktor-agents:build-agent",
+    agentType: "build-agent",
     kickoff: (issue) =>
       `Implement GitHub issue ${issue} per its spec and plan. Open or update the pull request first, ` +
       `then set the completion summary as that pull request's own body/description with ` +
@@ -168,12 +168,12 @@ const PHASE_DEFS = [
   {
     key: "qa",
     label: "QA",
-    tag: "<!-- odt:qa -->",
+    tag: "<!-- gh-pipeline:qa -->",
     commentTarget: "pr",
     fromStatus: ["status:ai-review"],
     gateLabel: "status:qa-awaiting-approval",
     // No single toStatus: the QA verdict decides human-review vs in-progress.
-    agentType: "openducktor-agents:qa-agent",
+    agentType: "qa-agent",
     kickoff: (issue) =>
       `Review the pull request for GitHub issue ${issue} against its spec and plan. ` +
       `Post the QA report as a comment on the pull request (not the issue, and not the pull request body). ` +
@@ -187,7 +187,7 @@ const PHASE_DEFS = [
 ];
 
 async function transitionTo(issue, to) {
-  await agent(`Run: bash .claude/scripts/odt-transition.sh ${issue} ${to}`, {
+  await agent(`Run: bash .claude/scripts/status-transition.sh ${issue} ${to}`, {
     label: "transition",
     model: "haiku",
   });
@@ -452,7 +452,7 @@ function parseArgs(rawArgs) {
 const { issue, mode, clarificationAnswer } = parseArgs(args);
 if (!issue) {
   throw new Error(
-    'Missing issue number. Pass args: { issueNumber: N, mode: "auto" | "manual" }, or invoke as "/openducktor-issue N" or "/openducktor-issue N manual".',
+    'Missing issue number. Pass args: { issueNumber: N, mode: "auto" | "manual" }, or invoke as "/gh-pipeline N" or "/gh-pipeline N manual".',
   );
 }
 if (mode !== "auto" && mode !== "manual" && mode !== "merge") {

@@ -1,16 +1,25 @@
 {
   "enabledPlugins": {
-    "openducktor-agents@openducktor-agents": true
+    "issue-agents@issue-agents": true
   },
   "permissions": {
     "allow": [
       "Bash(gh issue comment *)",
       "Bash(gh issue edit *)",
+      "Bash(gh issue view *)",
       "Bash(gh pr comment *)",
       "Bash(gh pr create *)",
       "Bash(gh pr edit *)",
       "Bash(gh pr merge *)",
-      "Bash(git push *)"
+      "Bash(gh pr view *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh api *)",
+      "Bash(gh repo view *)",
+      "Bash(git push *)",
+      "Bash(git rev-parse *)",
+      "Bash(mkdir *)",
+      "Bash(jq *)",
+      "Bash(bash .claude/scripts/issue-state-transition.sh *)"
     ]
   }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: odt-transition.sh <issue-number> <to-label>
+# Usage: status-transition.sh <issue-number> <to-label>
 # Reads the issue's current status:* label, checks it against the
 # transition table below, and only then rewrites the label.
 #
