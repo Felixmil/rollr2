@@ -138,6 +138,34 @@ const AGENT_SCHEMA = {
 // empty plain-text result could otherwise be mistaken for real content
 // and stall the loop, exactly as the gh-posting workflow does) ----
 
+// Cache-busting nonce for reads of MUTABLE on-disk state. Two things vary
+// it, and both matter:
+//
+//  - LAUNCH: parsed.launch, the counter the shell bumps on every relaunch.
+//    A resume via resumeFromRunId replays every agent() call with a
+//    byte-identical (prompt, opts), which is right for the expensive phase
+//    agents but wrong for a re-read of state.json that changed on disk
+//    since the cached run. Varying the read prompt per launch makes those
+//    reads run live and see the current file.
+//  - BUMP: a within-run counter incremented on every state-mutating write
+//    (patchState, transitionTo, seedState). Without it, two readState
+//    calls in the SAME run after two different writes would share a cache
+//    key and the second would replay the first's (now stale) result. The
+//    report called this out as a within-run trap; bumping on each write
+//    closes it.
+//
+// Only reads of state this workflow (or its agents) mutates get busted:
+// state.json, artifact presence, the QA verdict, the linked PR, dependency
+// artifacts. resolvePaths is deliberately NOT busted: the repo location
+// never changes across relaunches, so caching it is correct and cheaper.
+let LAUNCH = 1;
+let BUMP = 0;
+const bumpState = () => {
+  BUMP += 1;
+};
+const cacheBust = (prompt) =>
+  `${prompt} (Reads current on-disk state; launch ${LAUNCH}, revision ${BUMP}. This trailing note does not change what to run.)`;
+
 // The issues state root (a sibling of the checkout named <repo>.issues)
 // and the per-issue folder, derived from git so all worktrees of one
 // repo share one root. Returns absolute paths.
@@ -168,8 +196,10 @@ async function resolvePaths(issue) {
 // not exist yet.
 async function readState(dir) {
   const out = await agent(
-    `Run: cat ${dir}/state.json 2>/dev/null. If the file does not exist or stdout is empty, set exists to ` +
-      `false and leave state null. Otherwise set exists true and state to the parsed JSON object.`,
+    cacheBust(
+      `Run: cat ${dir}/state.json 2>/dev/null. If the file does not exist or stdout is empty, set exists to ` +
+        `false and leave state null. Otherwise set exists true and state to the parsed JSON object.`,
+    ),
     {
       label: "read-state",
       model: "haiku",
@@ -202,28 +232,88 @@ async function ensureState(dir, mode) {
     pendingQuestion: null,
     dependsOn: [],
   };
-  await agent(
-    `Run: mkdir -p ${dir} && cat > ${dir}/state.json <<'JSON'\n${JSON.stringify(seed, null, 2)}\nJSON`,
-    { label: "seed-state", model: "haiku" },
+  const out = await agent(
+    `Run these commands exactly, under bash. Do not substitute or invent any other command; if any exits ` +
+      `non-zero, STOP, set ok=false, and put stderr in error. Never attempt a recovery command.\n\n` +
+      `mkdir -p ${dir} && cat > ${dir}/state.json <<'JSON'\n${JSON.stringify(seed, null, 2)}\nJSON\n\n` +
+      `Set ok=true only if both the mkdir and the file write succeeded.`,
+    {
+      label: "seed-state",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ok"],
+        properties: { ok: { type: "boolean" }, error: { type: "string" } },
+      },
+    },
   );
+  if (!out?.ok) {
+    throw new Error(`seed-state failed for ${dir}/state.json: ${out?.error ?? "unknown error"}`);
+  }
+  bumpState();
   return seed;
 }
 
-// Write one or more non-status fields into state.json. NEVER writes
-// status: only the transition script moves the machine. Merges the given
-// fields over the existing object with jq so untouched fields survive.
+// Write one or more non-status fields into state.json, preserving every
+// other field. NEVER writes status: only the transition script moves the
+// machine.
+//
+// This is deliberately robust against the two ways an earlier version
+// corrupted state.json: (1) it never inlines the patch JSON into the jq
+// command string (which broke on shell-quoting of large/parenthesized
+// values); the patch is written to a temp file and merged via
+// --slurpfile with an additive `. + $patch[0]` so unpatched keys always
+// survive. (2) it verifies the write: the bookkeeping agent returns a
+// structured {ok,error} and is told never to invent a recovery command,
+// and the workflow then re-reads and checks the required keys still
+// exist, throwing loudly if the file was damaged. A silent, destructive
+// patch can no longer pass unnoticed.
 async function patchState(dir, fields) {
   if ("status" in fields) {
     throw new Error("patchState must never write status; use transitionTo (the validated script) instead.");
   }
-  const filter = Object.keys(fields)
-    .map((k) => `.${k} = $patch.${k}`)
-    .join(" | ");
-  await agent(
-    `Run exactly: jq --argjson patch '${JSON.stringify(fields)}' '${filter}' ${dir}/state.json > ${dir}/.state.tmp ` +
-      `&& mv ${dir}/.state.tmp ${dir}/state.json`,
-    { label: "patch-state", model: "haiku" },
+  const patchJson = JSON.stringify(fields);
+  const out = await agent(
+    `Run these commands exactly, in order, under bash. Do not substitute, reformat, or invent any other ` +
+      `command; if any command exits non-zero, STOP immediately, set ok=false, and put the failing command's ` +
+      `stderr in error. Never try an alternative approach or a recovery command.\n\n` +
+      `1. Write the patch to a temp file with a heredoc (the quoted 'JSON' delimiter means no expansion):\n` +
+      `cat > ${dir}/.state.patch.json <<'JSON'\n${patchJson}\nJSON\n\n` +
+      `2. Merge it additively over the existing state (unpatched keys are preserved) into a temp file, then ` +
+      `atomically move it into place:\n` +
+      `jq --slurpfile patch ${dir}/.state.patch.json '. + $patch[0]' ${dir}/state.json > ${dir}/.state.tmp ` +
+      `&& mv ${dir}/.state.tmp ${dir}/state.json && rm -f ${dir}/.state.patch.json\n\n` +
+      `Set ok=true only if every command above exited 0.`,
+    {
+      label: "patch-state",
+      model: "haiku",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ok"],
+        properties: { ok: { type: "boolean" }, error: { type: "string" } },
+      },
+    },
   );
+  if (!out?.ok) {
+    throw new Error(`patchState(${Object.keys(fields).join(", ")}) failed: ${out?.error ?? "unknown error"}`);
+  }
+  // The file changed on disk; bump so the verify read (and any later read
+  // this run) gets a fresh cache key and sees the new content.
+  bumpState();
+  // Verify the invariant the patch must not have broken: the required
+  // structural keys still exist. A damaged file (e.g. reduced to only the
+  // patched key) is caught here rather than surfacing later as an
+  // "Unknown mode undefined" or a lost status.
+  const after = await readState(dir);
+  if (!after || typeof after.status !== "string" || typeof after.mode !== "string") {
+    throw new Error(
+      `patchState(${Object.keys(fields).join(", ")}) left state.json missing required keys (status/mode); ` +
+        `refusing to continue with a corrupt state file at ${dir}/state.json.`,
+    );
+  }
+  return after;
 }
 
 // Move the state machine through the single validated mutator. A
@@ -247,16 +337,20 @@ async function transitionTo(root, issue, to) {
   if (!out?.ok) {
     throw new Error(`Transition ${issue} -> ${to} failed: ${out?.error ?? "unknown error"}`);
   }
+  // status changed on disk; bump so a later readState this run sees it.
+  bumpState();
 }
 
 // The pull request GitHub considers linked to this issue (via Closes #N),
 // or null. Re-derived fresh every call, never trusted from a cache.
 async function findLinkedPr(issue) {
   const out = await agent(
-    `Run: gh repo view --json owner,name --jq '.owner.login + " " + .name'. Then run exactly: ` +
-      `gh api graphql -f query='query { repository(owner: "OWNER", name: "NAME") { issue(number: ${issue}) { ` +
-      `closedByPullRequestsReferences(first: 5) { nodes { number } } } } }' with OWNER and NAME substituted ` +
-      `from the first command. Set prNumber to the first node's number, or null if there are none.`,
+    cacheBust(
+      `Run: gh repo view --json owner,name --jq '.owner.login + " " + .name'. Then run exactly: ` +
+        `gh api graphql -f query='query { repository(owner: "OWNER", name: "NAME") { issue(number: ${issue}) { ` +
+        `closedByPullRequestsReferences(first: 5) { nodes { number } } } } }' with OWNER and NAME substituted ` +
+        `from the first command. Set prNumber to the first node's number, or null if there are none.`,
+    ),
     {
       label: "find-linked-pr",
       model: "haiku",
@@ -275,8 +369,10 @@ async function findLinkedPr(issue) {
 // agent's summary of its own verdict). Returns "approved" | "rejected".
 async function readQaVerdict(dir) {
   const out = await agent(
-    `Run: grep -o 'QA-VERDICT: [a-z]*' ${dir}/qa.md | tail -1. Set verdict to "approved" if that line ends ` +
-      `in approved, otherwise "rejected".`,
+    cacheBust(
+      `Run: grep -o 'QA-VERDICT: [a-z]*' ${dir}/qa.md | tail -1. Set verdict to "approved" if that line ends ` +
+        `in approved, otherwise "rejected".`,
+    ),
     {
       label: "read-qa-verdict",
       model: "haiku",
@@ -295,7 +391,9 @@ async function readQaVerdict(dir) {
 // the agent's "I wrote the file").
 async function artifactExists(dir, filename) {
   const out = await agent(
-    `Run: test -s ${dir}/${filename} && echo yes || echo no. Set present to true only if stdout is "yes".`,
+    cacheBust(
+      `Run: test -s ${dir}/${filename} && echo yes || echo no. Set present to true only if stdout is "yes".`,
+    ),
     {
       label: "check-artifact",
       model: "haiku",
@@ -319,9 +417,11 @@ async function resolveDependencyPaths(root, dependsOn) {
     return { paths: [], missing: [] };
   }
   const out = await agent(
-    `For each issue number in ${JSON.stringify(dependsOn)}, check whether ${root}/<n>/spec.md and ` +
-      `${root}/<n>/plan.md exist. Collect the absolute paths that exist into paths, and the issue numbers ` +
-      `for which neither exists into missing.`,
+    cacheBust(
+      `For each issue number in ${JSON.stringify(dependsOn)}, check whether ${root}/<n>/spec.md and ` +
+        `${root}/<n>/plan.md exist. Collect the absolute paths that exist into paths, and the issue numbers ` +
+        `for which neither exists into missing.`,
+    ),
     {
       label: "resolve-deps",
       model: "haiku",
@@ -466,12 +566,25 @@ async function stopForDependency(dir, issue, missing) {
 // ---- args ----
 
 // args arrives as one of:
-//   { issueNumber, mode?, answer?, directive? }        (object; the shell/programmatic form)
-//   '{"issueNumber":142,...}'                            (that object re-serialized to a string
-//                                                          by some resume/relaunch paths)
-//   142 | "142" | "142 manual"                           (bare number / slash-command tokens)
-// answer and directive only arrive through the object form; there is no
-// slash-command syntax for them (the shell always uses the object form).
+//   { issueNumber, mode?, answer?, directive?, launch? }  (object; the shell/programmatic form)
+//   '{"issueNumber":142,...}'                             (that object re-serialized to a string
+//                                                           by some resume/relaunch paths)
+//   142 | "142" | "142 manual"                            (bare number / slash-command tokens)
+// answer, directive, and launch only arrive through the object form; there
+// is no slash-command syntax for them (the shell always uses the object form).
+//
+// launch is a monotonically increasing counter the shell bumps on every
+// relaunch (1 on the first launch, 2 on the first resume, and so on). It
+// exists only to bust the Workflow agent() result cache for reads of
+// mutable on-disk state (see LAUNCH/BUMP / cacheBust): a resume via
+// resumeFromRunId replays every agent() call whose (prompt, opts) is
+// byte-identical, which is exactly what we want for the expensive phase
+// agents but exactly wrong for a re-read of state.json that changed
+// on-disk since the cached run. Stamping the launch counter into those
+// read prompts changes their cache key per launch, so they run live and
+// see the current file, while phase-agent caching is preserved. A bare
+// slash-command run (no object args) has no launch; it defaults to 1,
+// which is correct because such a run never resumes a prior run.
 function parseArgs(rawArgs) {
   let value = rawArgs;
   if (typeof value === "string" && value.trim().startsWith("{")) {
@@ -487,10 +600,11 @@ function parseArgs(rawArgs) {
       mode: value.mode,
       answer: value.answer,
       directive: value.directive,
+      launch: typeof value.launch === "number" ? value.launch : 1,
     };
   }
   const tokens = String(value ?? "").trim().split(/\s+/).filter(Boolean);
-  return { issue: tokens[0], mode: tokens[1], answer: undefined, directive: undefined };
+  return { issue: tokens[0], mode: tokens[1], answer: undefined, directive: undefined, launch: 1 };
 }
 
 const parsed = parseArgs(args);
@@ -500,6 +614,12 @@ if (!issue) {
     'Missing issue number. Pass args: { issueNumber: N, mode: "auto"|"semi-auto"|"manual"|"merge" }, or "N" / "N manual".',
   );
 }
+
+// Set the per-launch nonce before any mutable-state read runs (see
+// LAUNCH/BUMP/cacheBust). Every read of on-disk state after this point is
+// stamped with the launch counter so a resume relaunch re-reads live
+// instead of replaying a stale cached snapshot.
+LAUNCH = parsed.launch;
 
 const { root, dir } = await resolvePaths(issue);
 

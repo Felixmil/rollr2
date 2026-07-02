@@ -50,17 +50,28 @@ same `state.json`, so it is safe, but redundant).
    mode word loudly.
 
 2. **Launch the workflow.** Call `Workflow` with the script and an object
-   `args`:
+   `args`, including `launch: 1`:
 
    ```
    Workflow({
      scriptPath: ".claude/workflows/file-pipeline.js",
-     args: { issueNumber: <issue>, mode: <mode-if-given> },
+     args: { issueNumber: <issue>, mode: <mode-if-given>, launch: 1 },
    })
    ```
 
    Keep the returned **`runId`** (from the tool result). You need it to
-   resume.
+   resume. Also keep a **launch counter** starting at `1`; you will
+   increment it on every relaunch (step 6).
+
+   **Why the launch counter matters (do not skip it).** A resume via
+   `resumeFromRunId` replays every workflow step whose inputs are
+   unchanged. The workflow's reads of its own on-disk `state.json` would
+   otherwise replay a *stale, pre-answer* snapshot on resume, so the
+   workflow would never see the answer you just gave and would loop
+   forever re-asking the same question. Passing a fresh, higher `launch`
+   on each relaunch is what forces those state reads to run live and see
+   the current file. If you relaunch with a stale or missing `launch`, the
+   resume silently does nothing.
 
 3. **Read the workflow's returned object.** Its `status` field tells you
    what happened:
@@ -100,17 +111,21 @@ same `state.json`, so it is safe, but redundant).
 
 6. **Relaunch the workflow, resuming from the same run** so completed
    phases replay from cache and only the answer-consuming call onward runs
-   live:
+   live. **Increment the launch counter and pass it** (this is what makes
+   the resume see your answer, per step 2):
 
    ```
    Workflow({
      scriptPath: ".claude/workflows/file-pipeline.js",
-     resumeFromRunId: "<runId from step 2>",
-     args: { issueNumber: <issue>, answer: "..." },   // or directive: {...}
+     resumeFromRunId: "<runId from the previous call>",
+     args: { issueNumber: <issue>, answer: "...", launch: <previous launch + 1> },
+     // or, at a gate/dependency: directive: {...} instead of answer
    })
    ```
 
-   Keep the new `runId` it returns; use it for the next resume.
+   Keep the new `runId` it returns and the incremented launch counter; use
+   them for the next resume. Every relaunch uses a strictly higher
+   `launch` than the one before it.
 
 7. **Go back to step 3** with the newly returned object. Repeat until a
    terminal status.
@@ -120,10 +135,19 @@ same `state.json`, so it is safe, but redundant).
 If `AskUserQuestion` returns no usable answer (it timed out, came back
 empty, or the user declined), **do not guess and do not relaunch with a
 made-up answer.** Stop. The workflow already left `pendingQuestion` set in
-`state.json` and did not advance the status, so a later re-run of this
-skill relaunches the workflow, which re-returns the same pending question,
-and you ask it again. Report to the user that the run is paused awaiting
-that decision.
+`state.json` and did not advance the status, so a later re-run recovers.
+
+Note the two recovery paths differ in one detail:
+
+- **Same session, later:** relaunch with `resumeFromRunId` and the next
+  `launch` value, exactly as in step 6.
+- **Fresh session (after a kill/close):** a brand-new
+  `/file-pipeline-workflow <issue>` invocation starts at `launch: 1` with
+  **no** `resumeFromRunId`. That is a fresh run with no prior cache, so it
+  genuinely re-reads `state.json`, sees the persisted `pendingQuestion`,
+  and re-asks. This is the most robust recovery and needs no special
+  handling. Report to the user that the run is paused awaiting the
+  decision.
 
 ## Merge
 
@@ -146,8 +170,15 @@ the result and finish.
   running the transition script, calling the phase agents, or touching the
   artifacts. The workflow owns all of that. You only launch it, ask, and
   relaunch.
-- Relaunching without `resumeFromRunId`. A fresh run re-executes every
-  phase from scratch instead of replaying from cache.
+- Relaunching, within the same session, without `resumeFromRunId`. That
+  re-executes every phase from scratch instead of replaying from cache.
+  (A brand-new invocation in a fresh session correctly has no
+  `resumeFromRunId`; that is the fresh-recovery path above, not this
+  anti-pattern.)
+- Relaunching with a stale or missing `launch` value. The resume then
+  replays the pre-answer state snapshot, never sees the answer, and loops
+  re-asking the same question. Always pass a strictly higher `launch` than
+  the previous call.
 - Driving the same issue with both this skill and the in-session
   `file-pipeline` skill in a way that interleaves. Pick one engine.
 
