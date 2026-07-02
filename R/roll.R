@@ -72,7 +72,8 @@ roll <- function(notation, compare = FALSE) {
 }
 
 #' @param x A `roll` object, as returned by `roll()`.
-#' @param ... Ignored, for compatibility with the [print()] generic.
+#' @param ... Ignored, for compatibility with the [print()] and [plot()]
+#'   generics.
 #' @rdname roll
 #' @export
 print.roll <- function(x, ...) {
@@ -90,6 +91,51 @@ print.roll <- function(x, ...) {
   }
 
   invisible(x)
+}
+
+#' @details
+#' `plot()` returns a themed [ggplot2::ggplot()] bar chart of the notation's
+#' exact theoretical outcome distribution, with the rolled total's bar
+#' highlighted and its percentile standing shown in the subtitle. The plot
+#' always shows the theoretical distribution and never reads `compare`, which
+#' remains a print-only switch. The returned object auto-prints when called at
+#' the top level and can be captured and extended with `+`.
+#'
+#' @rdname roll
+#' @export
+plot.roll <- function(x, ...) {
+  # Same exact-PMF source the print path uses (comparison_block()), so the
+  # plotted standing matches the printed one byte for byte. Consumes no RNG.
+  pmf <- outcome_pmf(x$n, x$x, x$m, x$keep, x$keep_n)
+  percentile <- percentile_below(pmf, x$total)
+
+  totals <- as.integer(names(pmf))
+  bars <- data.frame(
+    total = totals,
+    prob = as.numeric(pmf),
+    highlight = totals == x$total
+  )
+
+  ggplot(bars, aes(x = .data$total, y = .data$prob, fill = .data$highlight)) +
+    geom_col() +
+    scale_fill_manual(
+      values = c(`FALSE` = "grey70", `TRUE` = "firebrick"),
+      guide = "none"
+    ) +
+    scale_x_continuous(breaks = integer_axis_breaks(range(totals))) +
+    labs(
+      title = paste0("Outcome distribution for ", x$notation),
+      subtitle = paste0(
+        "This roll (total ",
+        x$total,
+        ") beats ",
+        percentile,
+        "% of outcomes"
+      ),
+      x = "Total",
+      y = "Probability"
+    ) +
+    theme_minimal()
 }
 
 # Internal helpers ----

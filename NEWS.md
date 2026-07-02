@@ -1,5 +1,7 @@
 # rollr2 0.0.0.9000
 
+* `plot.roll()` returns a themed ggplot of the notation's exact outcome distribution with the rolled total's bar highlighted and its percentile standing in the subtitle; it always shows the theoretical distribution and ignores the `compare` flag.
+* `plot.roll_distribution()` returns a themed ggplot bar chart of the sampled totals across the notation's range.
 * `roll()` rolls a dice-notation string once, returning the individual die results and the total (sum of dice plus modifier).
 * `roll()` gains a `compare` argument that, when `TRUE`, prints the notation's full outcome distribution as a text histogram with the rolled total's bar marked and a header stating what percent of outcomes the roll beats; the standing is computed exactly (never sampled), so it is the same for a given notation and total across sessions. Defaults to `FALSE`, leaving existing output unchanged.
 * `roll_distribution()` rolls a dice-notation string many times and summarises the distribution of totals, printing counts per outcome and a text histogram at the console.

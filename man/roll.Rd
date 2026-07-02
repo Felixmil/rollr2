@@ -3,11 +3,14 @@
 \name{roll}
 \alias{roll}
 \alias{print.roll}
+\alias{plot.roll}
 \title{Roll dice from notation once}
 \usage{
 roll(notation, compare = FALSE)
 
 \method{print}{roll}(x, ...)
+
+\method{plot}{roll}(x, ...)
 }
 \arguments{
 \item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
@@ -27,7 +30,8 @@ roll itself. The comparison is computed, not sampled, so a given
 
 \item{x}{A \code{roll} object, as returned by \code{roll()}.}
 
-\item{...}{Ignored, for compatibility with the \code{\link[=print]{print()}} generic.}
+\item{...}{Ignored, for compatibility with the \code{\link[=print]{print()}} and \code{\link[=plot]{plot()}}
+generics.}
 }
 \value{
 A \code{roll} object: a list with \code{dice} (integer vector of length \code{N},
@@ -43,6 +47,14 @@ uniform draws from \verb{1..X}, summed and adjusted by the modifier \code{M}. Wh
 the notation carries a keep selector (\code{h}/\code{l}), only the highest or lowest
 \code{K} of the rolled dice contribute to the total; the modifier is still
 applied once to that kept sum.
+}
+\details{
+\code{plot()} returns a themed \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} bar chart of the notation's
+exact theoretical outcome distribution, with the rolled total's bar
+highlighted and its percentile standing shown in the subtitle. The plot
+always shows the theoretical distribution and never reads \code{compare}, which
+remains a print-only switch. The returned object auto-prints when called at
+the top level and can be captured and extended with \code{+}.
 }
 \examples{
 set.seed(1)

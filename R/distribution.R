@@ -97,7 +97,8 @@ roll_distribution <- function(notation, n) {
 }
 
 #' @param x A `roll_distribution` object, as returned by `roll_distribution()`.
-#' @param ... Ignored, for compatibility with the [print()] generic.
+#' @param ... Ignored, for compatibility with the [print()] and [plot()]
+#'   generics.
 #' @rdname roll_distribution
 #' @export
 print.roll_distribution <- function(x, ...) {
@@ -115,6 +116,35 @@ print.roll_distribution <- function(x, ...) {
   cat(format_histogram(x$counts), sep = "\n")
   cat("\n")
   invisible(x)
+}
+
+#' @details
+#' `plot()` returns a themed [ggplot2::ggplot()] bar chart of the sampled
+#' counts across the notation's theoretical total range. The returned object
+#' auto-prints when called at the top level and can be captured and extended
+#' with `+`.
+#'
+#' @rdname roll_distribution
+#' @export
+plot.roll_distribution <- function(x, ...) {
+  bars <- data.frame(
+    total = as.integer(names(x$counts)),
+    count = as.integer(x$counts)
+  )
+
+  ggplot(bars, aes(x = .data$total, y = .data$count)) +
+    geom_col(fill = "steelblue") +
+    scale_x_continuous(breaks = integer_axis_breaks(x$range)) +
+    labs(
+      title = paste0("Distribution of totals for ", x$notation),
+      subtitle = paste0(
+        format(x$n, big.mark = ","),
+        " simulated rolls"
+      ),
+      x = "Total",
+      y = "Count"
+    ) +
+    theme_minimal()
 }
 
 # Internal helpers ----
@@ -193,6 +223,19 @@ outcome_pmf <- function(n, x, m, keep, keep_n) {
 percentile_below <- function(pmf, total) {
   outcomes <- as.integer(names(pmf))
   round(100 * sum(pmf[outcomes < total]))
+}
+
+# Integer x-axis breaks that cover a total range without cluttering wide
+# ranges. Shared by both plot methods. Bars are always drawn at their true
+# integer totals from the data; these breaks only label the axis. For a narrow
+# range (e.g. 2..12) `pretty()` returns roughly every meaningful integer; for a
+# wide range (e.g. 10..1000 for `10d100`) it returns a handful of round breaks,
+# so the axis never gets one label per outcome (EC-2). Rounding and filtering
+# to the integers inside the range keeps breaks correct across negative or
+# shifted ranges (EC-3). `range` is `c(min, max)`.
+integer_axis_breaks <- function(range) {
+  candidates <- unique(round(pretty(range)))
+  candidates[candidates >= range[1] & candidates <= range[2]]
 }
 
 # Keep-highest sum counts for the top `k` of `n` iid dice with faces `1..x`,

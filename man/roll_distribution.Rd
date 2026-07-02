@@ -3,11 +3,14 @@
 \name{roll_distribution}
 \alias{roll_distribution}
 \alias{print.roll_distribution}
+\alias{plot.roll_distribution}
 \title{Summarise the outcome distribution of repeated rolls}
 \usage{
 roll_distribution(notation, n)
 
 \method{print}{roll_distribution}(x, ...)
+
+\method{plot}{roll_distribution}(x, ...)
 }
 \arguments{
 \item{notation}{A length-1 character string in the form \code{NdX}, \code{NdX+M},
@@ -20,7 +23,8 @@ highest/lowest \code{K} dice per roll (defaulting to \code{K = 1}).}
 
 \item{x}{A \code{roll_distribution} object, as returned by \code{roll_distribution()}.}
 
-\item{...}{Ignored, for compatibility with the \code{\link[=print]{print()}} generic.}
+\item{...}{Ignored, for compatibility with the \code{\link[=print]{print()}} and \code{\link[=plot]{plot()}}
+generics.}
 }
 \value{
 A \code{roll_distribution} object: a list with \code{counts} (an integer
@@ -38,6 +42,12 @@ resulting totals. The distribution is sampled (not computed analytically),
 so results vary run to run unless a seed is fixed with \code{\link[=set.seed]{set.seed()}}. A keep
 selector (\code{h}/\code{l}) is applied per simulated roll before summing, so each
 total reflects the kept dice plus the modifier.
+}
+\details{
+\code{plot()} returns a themed \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} bar chart of the sampled
+counts across the notation's theoretical total range. The returned object
+auto-prints when called at the top level and can be captured and extended
+with \code{+}.
 }
 \examples{
 set.seed(1)
