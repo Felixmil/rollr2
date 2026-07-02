@@ -1,5 +1,15 @@
 {
   "enabledPlugins": {
     "openducktor-agents@openducktor-agents": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(gh issue comment *)",
+      "Bash(gh issue edit *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr edit *)",
+      "Bash(git push *)"
+    ]
   }
 }
