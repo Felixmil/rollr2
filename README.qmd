@@ -48,14 +48,14 @@ roll("2d20+2")
 A keep selector like `4d6h3` keeps only the highest (`h`) or lowest (`l`) dice; the printout then shows which dice were kept. The inverse drop spelling `4d6dl1` (drop the lowest of four d6, the conventional D&D ability-score roll) is the same thing said the other way round.
 
 ```{r}
-set.seed(42)
+set.seed(19)
 roll("4d6h3")
 ```
 
 A reroll marker like `2d6r2` rerolls once any die showing a value at or below the threshold (here 2), keeping the new value; `rr` instead rerolls until the die lands above the threshold. This is the D&D 5e Great Weapon Fighting style reroll.
 
 ```{r}
-set.seed(42)
+set.seed(7)
 roll("2d6r2")
 ```
 
