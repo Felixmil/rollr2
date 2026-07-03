@@ -56,7 +56,7 @@
 #'   kept per-die values.
 #'
 #' @examples
-#' set.seed(1)
+#' set.seed(8)
 #' roll("2d20+2")
 #' roll("d6")
 #' roll("4d6h3")
