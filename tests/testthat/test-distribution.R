@@ -335,6 +335,79 @@ test_that("the explode-indefinitely per-die PMF folds the depth-cap tail into th
   expect_gt(pmf[length(pmf)], 0)
 })
 
+# Success-counting pools ----
+
+test_that("success_p is the exact fraction of satisfying faces, clamped (AC-3)", {
+  expect_equal(success_p(10L, ">=", 8L), 3 / 10)
+  expect_equal(success_p(6L, ">=", 5L), 2 / 6)
+  expect_equal(success_p(10L, ">", 8L), 2 / 10)
+  expect_equal(success_p(10L, "<=", 3L), 3 / 10)
+  expect_equal(success_p(10L, "<", 3L), 2 / 10)
+  # Clamping: always-success and never-success targets.
+  expect_equal(success_p(10L, ">=", 1L), 1)
+  expect_equal(success_p(10L, ">=", 11L), 0)
+  expect_equal(success_p(10L, "<", 1L), 0)
+  expect_equal(success_p(10L, ">", 10L), 0)
+})
+
+test_that("the success-count PMF is Binomial(N, p) over 0..N (AC-7)", {
+  pmf <- grand_total_pmf(parse_notation("5d10>=8")$terms)
+
+  expect_equal(sum(pmf), 1)
+  expect_true(all(pmf >= 0))
+  expect_equal(as.integer(names(pmf)), 0:5)
+  expect_equal(unname(pmf), dbinom(0:5, 5, 0.3))
+})
+
+test_that("success_pmf equals dbinom named by success count", {
+  pmf <- success_pmf(6L, 2 / 6)
+  expect_equal(unname(pmf), dbinom(0:6, 6, 2 / 6))
+  expect_equal(as.integer(names(pmf)), 0:6)
+})
+
+test_that("term_bounds for a success term is c(0, N) (AC-7)", {
+  expect_equal(term_bounds(parse_notation("5d10>=8")$terms[[1]]), c(0L, 5L))
+  expect_equal(term_bounds(parse_notation("6d6>=5")$terms[[1]]), c(0L, 6L))
+  expect_equal(term_bounds(parse_notation("d10>=8")$terms[[1]]), c(0L, 1L))
+})
+
+test_that("roll_distribution samples success counts over 0..N reproducibly (AC-6)", {
+  withr::local_seed(42)
+  dist <- roll_distribution("6d6>=5", n = 1000)
+
+  expect_true(isTRUE(dist$success))
+  expect_equal(dist$range, c(0L, 6L))
+  expect_equal(sum(dist$counts), 1000L)
+  outcomes <- as.integer(names(dist$counts))
+  expect_true(all(outcomes >= 0L & outcomes <= 6L))
+
+  first <- withr::with_seed(42, roll_distribution("6d6>=5", n = 500))
+  second <- withr::with_seed(42, roll_distribution("6d6>=5", n = 500))
+  expect_equal(first$counts, second$counts)
+})
+
+test_that("the sampled success range agrees with the exact PMF endpoints (AC-7)", {
+  withr::local_seed(42)
+  dist <- roll_distribution("6d6>=5", n = 1000)
+  pmf <- grand_total_pmf(parse_notation("6d6>=5")$terms)
+  outcomes <- as.integer(names(pmf))
+
+  expect_equal(dist$range, c(min(outcomes), max(outcomes)))
+})
+
+test_that("a summed-total distribution carries no success flag (AC-11)", {
+  withr::local_seed(42)
+  expect_null(roll_distribution("2d6", n = 100)$success)
+})
+
+test_that("a degenerate success distribution warns once and still samples (AC-10)", {
+  withr::local_seed(42)
+  expect_snapshot(dist <- roll_distribution("5d10>=1", n = 100))
+  # Every roll of an always-success pool is 5 successes.
+  expect_equal(names(dist$counts), "5")
+  expect_equal(sum(dist$counts), 100L)
+})
+
 test_that("outcome_pmf matches brute-force enumeration for an explode-once keep case (AC-11)", {
   # Enumerate all 3^3 per-die-outcome triples of 3d3!h2 weighted by the exact
   # single-die 1d3! distribution, keep the top 2, and tabulate. 1d3! has support

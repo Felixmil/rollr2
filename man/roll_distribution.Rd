@@ -37,7 +37,13 @@ is required and bounded \verb{1 <= T <= X - 1}, e.g. \verb{2d6r1}, \verb{1d20rr1
 \verb{4d6r1h3}. Several such terms, plus bare integer constants, may be joined
 with \code{+} or \code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}); at
 least one dice term is required and each keep or drop selector applies
-within its own term only.}
+within its own term only. A trailing success comparator (\code{NdX>=T}, \code{NdX>T},
+\code{NdX<=T}, \code{NdX<T} against an integer target \code{T}, e.g. \verb{5d10>=8}, \verb{6d6>=5})
+turns the whole notation into a success-counting pool: each simulated roll
+is then a count of dice that satisfy the comparator (\verb{0..N}), not a summed
+total. A success-counting notation is a single bare dice term with a
+comparator (no keep or drop selector, explode marker, modifier, join, or
+constant).}
 
 \item{n}{Number of whole-notation rolls to simulate. A positive integer.}
 
@@ -54,8 +60,12 @@ of a grand total, the sum across terms of each term's own min/max plus the
 signed constants), \code{n}, \code{terms} (the parsed per-term breakdown), and the
 original \code{notation}. For a single-term notation the parsed components
 \code{dice_n}, \code{x}, \code{m}, \code{keep}, \code{keep_n}, \code{reroll}, \code{reroll_t} are also
-present at the top level; they are omitted for a multi-term notation. Its
-\code{print()} method renders the counts and a text histogram for the console.
+present at the top level; they are omitted for a multi-term notation. For a
+success-counting notation the outcome is a success count rather than a
+summed total: \code{range} is the success-count range \code{c(0, N)}, \code{counts} are
+observed success counts, and \code{success} is \code{TRUE}; a summed-total
+distribution carries no \code{success} field. Its \code{print()} method renders the
+counts and a text histogram for the console.
 }
 \description{
 Simulates \code{n} whole-notation rolls and summarises the distribution of the

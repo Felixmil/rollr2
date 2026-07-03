@@ -37,8 +37,19 @@
 #'   never warns. Several such terms, plus bare integer constants, may be
 #'   joined with `+` or `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`,
 #'   `1d20+1d6+1d4+3`); at least one dice term is required and each keep or drop
-#'   selector applies within its own term only. See [roll_distribution()] to
-#'   summarise many rolls.
+#'   selector applies within its own term only.
+#'
+#'   A trailing success comparator turns the whole notation into a
+#'   success-counting pool: `NdX>=T`, `NdX>T`, `NdX<=T`, or `NdX<T` against an
+#'   integer target `T` (e.g. `5d10>=8`, `6d6>=5`). The outcome is then a count
+#'   of dice that satisfy the comparator, an integer in `0..N`, not a summed
+#'   total. A die succeeds when its face satisfies the comparator against `T`,
+#'   with per-die probability `p` equal to the fraction of `1..X` faces that
+#'   satisfy it, so the count is exactly Binomial(`N`, `p`). A success-counting
+#'   notation is a single bare dice term with a comparator: it takes no keep or
+#'   drop selector, explode marker, reroll marker, or modifier, and does not
+#'   join with other terms or constants. See [roll_distribution()] to summarise
+#'   many rolls.
 #' @param compare A length-1 logical. When `TRUE`, printing the roll also
 #'   shows where the total sits within the notation's full theoretical outcome
 #'   distribution: a header line stating what percent of outcomes the roll
@@ -60,7 +71,11 @@
 #'   access via `terms` is required. For an exploding or reroll term `dice`
 #'   still lists every physical die including rerolls in draw order (for a
 #'   reroll term, the rerolled-away faces are listed too), and `kept` lists the
-#'   kept per-die values.
+#'   kept per-die values. For a success-counting notation the outcome is a
+#'   success count, not a summed total: `total` (also `successes`) is the number
+#'   of dice that satisfy the comparator (`0..N`), `successful` is the subset of
+#'   `dice` that satisfy it, and `success` is `TRUE`; a summed-total roll
+#'   carries none of these success fields.
 #'
 #' @examples
 #' set.seed(8)
@@ -68,6 +83,7 @@
 #' roll("d6")
 #' roll("4d6h3")
 #' roll("1d20+1d6+3")
+#' roll("5d10>=8")
 #' roll("2d6", compare = TRUE)
 #'
 #' @export
@@ -93,6 +109,25 @@ roll <- function(notation, compare = FALSE) {
     )
   }
 
+  # A success-counting notation is a single dice term carrying a comparator; its
+  # outcome is a success count over `0..N`, not a summed total. A degenerate
+  # (always/never-success) pool warns once here; the count is still the correct
+  # clamped outcome.
+  success <- is_success_term(parsed$terms[[1L]])
+  if (success) {
+    sole <- parsed$terms[[1L]]
+    warn_degenerate_pool(
+      sole$x,
+      sole$compare_op,
+      sole$compare_target,
+      success_p(sole$x, sole$compare_op, sole$compare_target)
+    )
+  }
+
+  # The outcome slot `total` holds the success count for a success notation (the
+  # sole term's subtotal is the count) and the summed grand total otherwise.
+  # Reusing `total` keeps `comparison_block()`, `percentile_below()`, and
+  # `plot.roll()` reading the outcome from one slot; `$success` disambiguates it.
   total <- sum(vapply(terms, \(term) term$subtotal, integer(1L)))
 
   # Flat top-level fields (FR-5): `dice` is every die rolled and `kept` is the
@@ -131,6 +166,18 @@ roll <- function(notation, compare = FALSE) {
     obj$reroll_t <- sole$reroll_t
   }
 
+  # Mark a success-counting roll and expose its detail so the print/plot methods
+  # present a success count. A summed-total roll does not gain any of these
+  # fields (their absence, tested via `isTRUE()`, means summed total).
+  if (success) {
+    sole_term <- terms[[1L]]
+    obj$success <- TRUE
+    obj$successes <- total
+    obj$successful <- sole_term$successful
+    obj$compare_op <- sole_term$compare_op
+    obj$compare_target <- sole_term$compare_target
+  }
+
   structure(obj, class = "roll")
 }
 
@@ -141,6 +188,34 @@ roll <- function(notation, compare = FALSE) {
 #' @export
 print.roll <- function(x, ...) {
   cat("<roll> ", x$notation, "\n", sep = "")
+
+  # A success-counting roll presents a success count, not a summed total: the
+  # rolled dice, then a `Successes:` line reporting the count out of N and the
+  # comparator against the target. A summed-total roll keeps its existing layout
+  # byte-for-byte (the success branch is entered only via `isTRUE(x$success)`).
+  if (isTRUE(x$success)) {
+    cat("Dice:      ", paste(x$dice, collapse = ", "), "\n", sep = "")
+    cat(
+      "Successes: ",
+      x$successes,
+      " of ",
+      length(x$dice),
+      " (faces ",
+      x$compare_op,
+      " ",
+      x$compare_target,
+      ")\n",
+      sep = ""
+    )
+
+    if (isTRUE(x$compare)) {
+      cat("\n")
+      cat(comparison_block(x), sep = "\n")
+      cat("\n")
+    }
+
+    return(invisible(x))
+  }
 
   # One `Dice:` line per dice term (and a `Kept:` line for any selector term),
   # in term order, then a single grand `Total:`. Constant terms have no dice
@@ -193,6 +268,31 @@ plot.roll <- function(x, ...) {
     highlight = totals == x$total
   )
 
+  # A success-counting roll names successes in the title, subtitle, and x axis;
+  # a summed-total roll keeps its existing labels byte-for-byte. The data
+  # (PMF over `0..N`) and highlighted bar come from the shared source unchanged.
+  if (isTRUE(x$success)) {
+    title <- paste0("Success distribution for ", x$notation)
+    subtitle <- paste0(
+      "This roll (",
+      x$total,
+      " successes) beats ",
+      percentile,
+      "% of outcomes"
+    )
+    x_lab <- "Successes"
+  } else {
+    title <- paste0("Outcome distribution for ", x$notation)
+    subtitle <- paste0(
+      "This roll (total ",
+      x$total,
+      ") beats ",
+      percentile,
+      "% of outcomes"
+    )
+    x_lab <- "Total"
+  }
+
   ggplot(bars, aes(x = .data$total, y = .data$prob, fill = .data$highlight)) +
     geom_col() +
     scale_fill_manual(
@@ -201,15 +301,9 @@ plot.roll <- function(x, ...) {
     ) +
     scale_x_continuous(breaks = integer_axis_breaks(range(totals))) +
     labs(
-      title = paste0("Outcome distribution for ", x$notation),
-      subtitle = paste0(
-        "This roll (total ",
-        x$total,
-        ") beats ",
-        percentile,
-        "% of outcomes"
-      ),
-      x = "Total",
+      title = title,
+      subtitle = subtitle,
+      x = x_lab,
       y = "Probability"
     ) +
     theme_minimal()
@@ -241,6 +335,35 @@ roll_term <- function(term) {
       dice = integer(0),
       kept = integer(0),
       subtotal = term$value
+    ))
+  }
+
+  # A success-counting term draws its `n` dice with the identical batched
+  # `sample.int` a bare `NdX` uses (so the RNG stream is byte-identical), then
+  # counts the faces that satisfy the comparator. The successful faces are the
+  # kept dice, and the success count is the subtotal (a success term is
+  # single-term with `sign = +1` and no modifier).
+  if (is_success_term(term)) {
+    dice <- sample.int(term$x, size = term$n, replace = TRUE)
+    mask <- success_mask(dice, term$compare_op, term$compare_target)
+    successful <- dice[mask]
+    count <- sum(mask)
+    return(list(
+      kind = "dice",
+      sign = term$sign,
+      n = term$n,
+      x = term$x,
+      m = term$m,
+      keep = term$keep,
+      keep_n = term$keep_n,
+      explode = term$explode,
+      compare_op = term$compare_op,
+      compare_target = term$compare_target,
+      dice = dice,
+      kept = successful,
+      successful = successful,
+      subtotal = count,
+      capped = FALSE
     ))
   }
 
@@ -421,19 +544,34 @@ comparison_block <- function(x) {
   names(scaled) <- names(pmf)
   bars <- format_histogram(scaled, width = width)
 
-  # Mark the bar for the rolled total. The names are the full ascending range,
-  # so the total's line is at offset `total - range_min`.
+  # Mark the bar for the rolled outcome (total, or success count for a success
+  # roll). The names are the full ascending range, so the outcome's line is at
+  # offset `outcome - range_min`.
   outcomes <- as.integer(names(pmf))
   marked <- match(x$total, outcomes)
   bars[marked] <- paste0(bars[marked], " <- this roll")
 
-  header <- paste0(
-    "Distribution for ",
-    x$notation,
-    ": this roll beats ",
-    percentile,
-    "% of outcomes"
-  )
+  # A success-counting roll names successes in the header; a summed-total roll
+  # keeps its existing header.
+  header <- if (isTRUE(x$success)) {
+    paste0(
+      "Success distribution for ",
+      x$notation,
+      ": this roll (",
+      x$total,
+      " successes) beats ",
+      percentile,
+      "% of outcomes"
+    )
+  } else {
+    paste0(
+      "Distribution for ",
+      x$notation,
+      ": this roll beats ",
+      percentile,
+      "% of outcomes"
+    )
+  }
 
   c(header, bars)
 }

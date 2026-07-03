@@ -509,3 +509,63 @@ test_that("a wide multi-term comparison stays complete and finite (AC-7)", {
 
   expect_length(block, 1982L)
 })
+
+# Success-counting pools ----
+
+test_that("a success roll draws the same dice as the bare pool and counts successes (AC-4)", {
+  # The success draw uses the identical batched sample.int a bare NdX uses, so
+  # under the same seed the dice match; the outcome is the count of those faces
+  # that satisfy the comparator, exposed as both $total and $successes.
+  success <- withr::with_seed(42, roll("5d10>=8"))
+  bare <- withr::with_seed(42, roll("5d10"))
+
+  expect_equal(success$dice, bare$dice)
+  expect_true(isTRUE(success$success))
+  expected_count <- sum(success$dice >= 8L)
+  expect_equal(success$total, expected_count)
+  expect_equal(success$successes, expected_count)
+  expect_true(success$total >= 0L && success$total <= 5L)
+  # The successful subset is exactly the dice that satisfy the comparator.
+  expect_equal(success$successful, success$dice[success$dice >= 8L])
+})
+
+test_that("a summed-total roll carries no success flag (AC-11)", {
+  result <- withr::with_seed(42, roll("2d20+2"))
+  expect_null(result$success)
+})
+
+test_that("print.roll presents a success count rather than a total (AC-5)", {
+  # Construct the dice directly so the snapshot does not depend on the RNG seed.
+  r <- withr::with_seed(42, roll("5d10>=8"))
+  r$dice <- c(9L, 3L, 8L, 5L, 10L)
+  r$terms[[1]]$dice <- c(9L, 3L, 8L, 5L, 10L)
+  r$successful <- c(9L, 8L, 10L)
+  r$successes <- 3L
+  r$total <- 3L
+  expect_snapshot(print(r))
+})
+
+test_that("print.roll with compare shows the success distribution and marked count (AC-8)", {
+  # A count of 2 out of 5 on 5d10>=8 (p = 0.3) gives a non-trivial standing with
+  # the marked bar inside the histogram. Construct the count directly so the
+  # case is deterministic rather than seed-dependent.
+  r <- withr::with_seed(42, roll("5d10>=8", compare = TRUE))
+  r$dice <- c(9L, 3L, 8L, 5L, 4L)
+  r$terms[[1]]$dice <- c(9L, 3L, 8L, 5L, 4L)
+  r$successful <- c(9L, 8L)
+  r$successes <- 2L
+  r$total <- 2L
+  expect_snapshot(print(r))
+})
+
+test_that("an always-success pool warns once and returns N successes (AC-10)", {
+  withr::local_seed(42)
+  expect_snapshot(result <- roll("5d10>=1"))
+  expect_equal(result$total, 5L)
+})
+
+test_that("a never-success pool warns once and returns zero successes (AC-10)", {
+  withr::local_seed(42)
+  expect_snapshot(result <- roll("5d10>=11"))
+  expect_equal(result$total, 0L)
+})

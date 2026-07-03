@@ -280,3 +280,41 @@ test_that("plot.roll_distribution axis reflects x$range, not only observed", {
   breaks <- integer_axis_breaks(d$range)
   expect_equal(range(breaks), c(2, 12))
 })
+
+# Success-counting pools ----
+
+test_that("plot.roll highlights the rolled success count with success labels (AC-9)", {
+  r <- withr::with_seed(42, roll("5d10>=8"))
+  p <- plot(r)
+
+  expect_s3_class(p, "ggplot")
+  # The success count spans the 0..5 range.
+  expect_equal(range(ggplot2::layer_data(p)$x), c(0, 5))
+  expect_equal(p$labels$title, "Success distribution for 5d10>=8")
+  expect_equal(p$labels$x, "Successes")
+  expect_equal(p$labels$y, "Probability")
+
+  # Exactly the rolled success count's bar carries the highlight fill, and the
+  # standing matches the shared PMF source.
+  expected_percentile <- percentile_below(grand_total_pmf(r$terms), r$total)
+  expect_match(
+    p$labels$subtitle,
+    paste0("beats ", expected_percentile, "% of outcomes"),
+    fixed = TRUE
+  )
+  ld <- ggplot2::layer_data(p)
+  expect_equal(ld$x[ld$fill == "firebrick"], as.numeric(r$total))
+})
+
+test_that("plot.roll_distribution plots sampled success counts with success labels (AC-9)", {
+  d <- withr::with_seed(42, roll_distribution("6d6>=5", n = 1000))
+  p <- plot(d)
+
+  expect_s3_class(p, "ggplot")
+  expect_true(all(
+    range(ggplot2::layer_data(p)$x) >= 0 & range(ggplot2::layer_data(p)$x) <= 6
+  ))
+  expect_equal(p$labels$title, "Success distribution for 6d6>=5")
+  expect_equal(p$labels$x, "Successes")
+  expect_equal(p$labels$y, "Count")
+})

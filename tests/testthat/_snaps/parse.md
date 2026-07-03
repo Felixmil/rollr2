@@ -3190,3 +3190,561 @@
       i Received "1d6 1d6".
       i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
 
+# parse_notation reads a success comparator and its integer target (AC-1)
+
+    Code
+      parse_notation("5d10>=8")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">="
+      
+      $terms[[1]]$compare_target
+      [1] 8
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("6d6>=5")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 6
+      
+      $terms[[1]]$x
+      [1] 6
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">="
+      
+      $terms[[1]]$compare_target
+      [1] 5
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("5d10>8")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">"
+      
+      $terms[[1]]$compare_target
+      [1] 8
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("5d10<=3")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] "<="
+      
+      $terms[[1]]$compare_target
+      [1] 3
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("5d10<3")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] "<"
+      
+      $terms[[1]]$compare_target
+      [1] 3
+      
+      
+      
+
+# a success comparator accepts the count-omitted and case variants (AC-1)
+
+    Code
+      parse_notation("d10>=8")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 1
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">="
+      
+      $terms[[1]]$compare_target
+      [1] 8
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("5D10>=8")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">="
+      
+      $terms[[1]]$compare_target
+      [1] 8
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("5d10 >= 8")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">="
+      
+      $terms[[1]]$compare_target
+      [1] 8
+      
+      
+      
+
+# a degenerate but well-formed success target parses without error (AC-10)
+
+    Code
+      parse_notation("5d10>=1")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">="
+      
+      $terms[[1]]$compare_target
+      [1] 1
+      
+      
+      
+
+---
+
+    Code
+      parse_notation("5d10>=11")
+    Output
+      $terms
+      $terms[[1]]
+      $terms[[1]]$kind
+      [1] "dice"
+      
+      $terms[[1]]$sign
+      [1] 1
+      
+      $terms[[1]]$n
+      [1] 5
+      
+      $terms[[1]]$x
+      [1] 10
+      
+      $terms[[1]]$m
+      [1] 0
+      
+      $terms[[1]]$keep
+      [1] NA
+      
+      $terms[[1]]$keep_n
+      [1] NA
+      
+      $terms[[1]]$explode
+      [1] "none"
+      
+      $terms[[1]]$compare_op
+      [1] ">="
+      
+      $terms[[1]]$compare_target
+      [1] 11
+      
+      
+      
+
+# a comparator combined with a keep selector is rejected (AC-2)
+
+    Code
+      parse_notation("5d10h3>=8")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10h3>=8".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10>=8h3")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>=8h3".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+# a comparator combined with an explode marker is rejected (AC-2)
+
+    Code
+      parse_notation("5d10!>=8")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10!>=8".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10>=8!")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>=8!".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+# a comparator combined with a modifier is rejected (AC-2)
+
+    Code
+      parse_notation("5d10>=8+2")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>=8+2".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10+2>=8")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10+2>=8".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+# a comparator inside a multi-term notation is rejected (AC-2)
+
+    Code
+      parse_notation("5d10>=8+1d6")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>=8+1d6".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10>=8-1d4")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>=8-1d4".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("2+5d10>=8")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "2+5d10>=8".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+# a malformed comparator or target is rejected (AC-2)
+
+    Code
+      parse_notation("5d10>=")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>=".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10>=8.5")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>=8.5".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10>>8")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10>>8".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10=>8")
+    Condition
+      Error in `parse_notation()`:
+      ! A success pool must be a single dice term with a comparator, like "5d10>=8".
+      i Received "5d10=>8".
+      i A comparator (>=, >, <=, <) against an integer target cannot combine with a keep selector, explode marker, modifier, or another term.
+
+---
+
+    Code
+      parse_notation("5d10==8")
+    Condition
+      Error in `parse_notation()`:
+      ! `notation` is not valid dice notation.
+      i Received "5d10==8".
+      i Expected a form like "2d20+2", "4d6", "1d8-1", or "d20".
+
+# a success pool reuses the count and die-size validation (AC-2)
+
+    Code
+      parse_notation("0d10>=5")
+    Condition
+      Error in `parse_notation()`:
+      ! Number of dice must be a positive integer.
+      i Received 0 in "0d10>=5".
+
+---
+
+    Code
+      parse_notation("5d1>=1")
+    Condition
+      Error in `parse_notation()`:
+      ! Die size must be an integer of at least 2.
+      i Received 1 in "5d1>=1".
+

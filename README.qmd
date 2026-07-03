@@ -66,6 +66,13 @@ set.seed(42)
 roll("1d20+1d6+3")
 ```
 
+A trailing comparator like `5d10>=8` counts how many dice meet the target instead of summing them, so the outcome is a success count rather than a total.
+
+```{r}
+set.seed(42)
+roll("5d10>=8")
+```
+
 ## Summarise a distribution
 
 `roll_distribution()` rolls the whole notation many times and summarises the distribution of totals, printing a count per outcome and a text histogram.

@@ -13,5 +13,6 @@
 #' @importFrom rlang abort
 #' @importFrom rlang warn
 #' @importFrom stats convolve
+#' @importFrom stats dbinom
 ## usethis namespace: end
 NULL

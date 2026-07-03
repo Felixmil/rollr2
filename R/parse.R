@@ -62,7 +62,10 @@
 #'   `reroll` is `"none"`). Explode and reroll are mutually exclusive, so at
 #'   most one of `explode` and `reroll` is not `"none"`. A constant term is
 #'   `list(kind = "const", value)` where `value` is the signed integer
-#'   contribution.
+#'   contribution. A success-counting term (a whole-notation single dice term
+#'   with a trailing comparator) carries two further fields after `reroll_t`:
+#'   `compare_op` (the comparator `">="`, `">"`, `"<="`, or `"<"`) and
+#'   `compare_target` (the integer target `T`); a summed-total term omits both.
 #'
 #' @keywords internal
 #' @noRd
@@ -89,6 +92,18 @@ parse_notation <- function(notation) {
   # internal helpers), keeping the error snapshots stable, so the helpers
   # raise against this frame.
   call <- environment()
+
+  # A trailing success comparator (`>=`, `>`, `<=`, `<`) turns the whole
+  # notation into a single success-counting pool, mutually exclusive with the
+  # summed-total grammar (no join, no constant, no selector, explode marker, or
+  # modifier). It is a whole-notation shape, so it is detected and parsed here
+  # before the summed-total tokeniser runs, and never reaches `tokenise_terms()`
+  # or `parse_term()` (so no summed-total path or snapshot is touched). No valid
+  # summed-total notation contains `<` or `>`, so their presence is a safe
+  # trigger for the success branch.
+  if (grepl("[<>]", trimmed)) {
+    return(list(terms = list(parse_success_term(trimmed, notation, call))))
+  }
 
   tokens <- tokenise_terms(trimmed, notation, call)
   n_terms <- length(tokens)
@@ -524,6 +539,94 @@ parse_selector <- function(
   list(keep = keep, keep_n = n - drop_n)
 }
 
+# Parse a whole-notation success-counting pool: a single bare dice term (`NdX`
+# or the count-omitted `dX`) followed by a comparator (`>=`, `>`, `<=`, `<`)
+# against an integer target. A success comparator makes the whole notation a
+# success pool, so this is a whole-notation form with no join, no constant, no
+# keep selector, no explode marker, and no modifier. Any comparator-bearing
+# notation that is not exactly this bare form is rejected with a dedicated,
+# clearer error than the generic "not valid dice notation".
+parse_success_term <- function(trimmed, notation, call) {
+  # Strict whole-string success form: optional count, `d`, size, comparator,
+  # integer target, anchored to the whole string with tolerated whitespace
+  # around the die and comparator (matching the existing grammar). The
+  # comparator alternation lists the two-character operators before the
+  # one-character ones so `>=`/`<=` win the longest match over `>`/`<`. The
+  # pattern has no explode-marker, keep-selector, or modifier group, so any such
+  # composition fails to match and is rejected below.
+  match <- regmatches(
+    trimmed,
+    regexec(
+      "^(\\d*)[dD](\\d+)\\s*(>=|<=|>|<)\\s*(\\d+)$",
+      trimmed,
+      perl = TRUE
+    )
+  )[[1]]
+
+  if (length(match) == 0L) {
+    abort(
+      bad_success_message(notation),
+      class = bad_success_class(),
+      call = call
+    )
+  }
+
+  count_str <- match[[2]]
+  size_str <- match[[3]]
+  op <- match[[4]]
+  target_str <- match[[5]]
+
+  n <- if (nzchar(count_str)) as.integer(count_str) else 1L
+  x <- as.integer(size_str)
+  target <- as.integer(target_str)
+
+  # A success pool is single-term, so `in_clause()` produces the single-term
+  # ` in "<notation>".` phrasing, byte-identical to a bare `NdX` count/size
+  # error. Reuse the exact count/size validation a bare `NdX` applies.
+  if (n < 1L) {
+    abort(
+      c(
+        "Number of dice must be a positive integer.",
+        i = paste0("Received ", n, in_clause(trimmed, notation, 1L))
+      ),
+      class = c("rollr2_error_bad_count", "rollr2_error"),
+      call = call
+    )
+  }
+
+  if (x < 2L) {
+    abort(
+      c(
+        "Die size must be an integer of at least 2.",
+        i = paste0("Received ", x, in_clause(trimmed, notation, 1L))
+      ),
+      class = c("rollr2_error_bad_die_size", "rollr2_error"),
+      call = call
+    )
+  }
+
+  # The target's magnitude is not validated: a target outside `1..X` is
+  # well-formed and clamps to an always-success or never-success pool (handled
+  # downstream). The `\\d+` group already guarantees a non-negative integer, so
+  # a negative or non-integer target cannot reach here (it fails the strict
+  # pattern and is rejected as a bad-success composition above).
+  #
+  # `compare_op`/`compare_target` come last so a success-term snapshot reads
+  # naturally; a summed-total term (built by `parse_term()`) never gains them.
+  list(
+    kind = "dice",
+    sign = 1L,
+    n = n,
+    x = x,
+    m = 0L,
+    keep = NA_character_,
+    keep_n = NA_integer_,
+    explode = "none",
+    compare_op = op,
+    compare_target = target
+  )
+}
+
 # The `in "<location>"` clause of a per-term validation error (FR-4). For a
 # single-term notation the term and the notation are the same string, so the
 # clause is ` in "<notation>".`, byte-identical to the pre-multi-term wording.
@@ -556,4 +659,25 @@ bad_notation_message <- function(notation) {
 
 bad_notation_class <- function() {
   c("rollr2_error_bad_notation", "rollr2_error")
+}
+
+# The dedicated error body and class for a comparator-bearing notation that is
+# not the bare single-dice-term success form: a comparator combined with a keep
+# selector, explode marker, modifier, another term, a constant, a missing or
+# non-integer target, or an unknown/doubled comparator. Clearer than the generic
+# "not valid dice notation" so the user learns why a success pool must stand
+# alone.
+bad_success_message <- function(notation) {
+  c(
+    "A success pool must be a single dice term with a comparator, like \"5d10>=8\".",
+    i = paste0("Received ", encodeString(notation, quote = "\""), "."),
+    i = paste0(
+      "A comparator (>=, >, <=, <) against an integer target cannot combine ",
+      "with a keep selector, explode marker, modifier, or another term."
+    )
+  )
+}
+
+bad_success_class <- function() {
+  c("rollr2_error_bad_success", "rollr2_error")
 }

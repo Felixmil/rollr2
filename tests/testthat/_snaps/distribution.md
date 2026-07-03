@@ -109,3 +109,11 @@
       26 | #### 1
       
 
+# a degenerate success distribution warns once and still samples (AC-10)
+
+    Code
+      dist <- roll_distribution("5d10>=1", n = 100)
+    Condition
+      Warning:
+      A success pool with target 1 against d10 >= can never fail (p = 1).
+
