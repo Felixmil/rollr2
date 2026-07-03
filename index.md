@@ -75,6 +75,19 @@ roll("1d20+1d6+3")
 #> Total: 25
 ```
 
+A trailing comparator like `5d10>=8` counts how many dice meet the
+target instead of summing them, so the outcome is a success count rather
+than a total.
+
+``` r
+
+set.seed(42)
+roll("5d10>=8")
+#> <roll> 5d10>=8
+#> Dice:      1, 5, 1, 9, 10
+#> Successes: 2 of 5 (faces >= 8)
+```
+
 ## Summarise a distribution
 
 [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)

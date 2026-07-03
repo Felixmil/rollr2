@@ -100,7 +100,13 @@ is required and bounded <code>1 &lt;= T &lt;= X - 1</code>, e.g. <code>2d6r1</co
 <code>4d6r1h3</code>. Several such terms, plus bare integer constants, may be joined
 with <code>+</code> or <code>-</code> into one notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>); at
 least one dice term is required and each keep or drop selector applies
-within its own term only.</p></dd>
+within its own term only. A trailing success comparator (<code>NdX&gt;=T</code>, <code>NdX&gt;T</code>,
+<code>NdX&lt;=T</code>, <code>NdX&lt;T</code> against an integer target <code>T</code>, e.g. <code>5d10&gt;=8</code>, <code>6d6&gt;=5</code>)
+turns the whole notation into a success-counting pool: each simulated roll
+is then a count of dice that satisfy the comparator (<code>0..N</code>), not a summed
+total. A success-counting notation is a single bare dice term with a
+comparator (no keep or drop selector, explode marker, modifier, join, or
+constant).</p></dd>
 
 
 <dt id="arg-n">n<a class="anchor" aria-label="anchor" href="#arg-n"></a></dt>
@@ -125,8 +131,12 @@ of a grand total, the sum across terms of each term's own min/max plus the
 signed constants), <code>n</code>, <code>terms</code> (the parsed per-term breakdown), and the
 original <code>notation</code>. For a single-term notation the parsed components
 <code>dice_n</code>, <code>x</code>, <code>m</code>, <code>keep</code>, <code>keep_n</code>, <code>reroll</code>, <code>reroll_t</code> are also
-present at the top level; they are omitted for a multi-term notation. Its
-<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> method renders the counts and a text histogram for the console.</p>
+present at the top level; they are omitted for a multi-term notation. For a
+success-counting notation the outcome is a success count rather than a
+summed total: <code>range</code> is the success-count range <code>c(0, N)</code>, <code>counts</code> are
+observed success counts, and <code>success</code> is <code>TRUE</code>; a summed-total
+distribution carries no <code>success</code> field. Its <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> method renders the
+counts and a text histogram for the console.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

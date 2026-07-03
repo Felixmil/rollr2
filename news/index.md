@@ -66,3 +66,15 @@
   `roll(compare = TRUE)` and both
   [`plot()`](https://rdrr.io/r/graphics/plot.default.html) methods
   accounts for it and matches the sampler.
+- Both functions gain a trailing success comparator (`>=`, `>`, `<=`,
+  `<`) against an integer target that turns the whole notation into a
+  success-counting pool (e.g. `5d10>=8`, `6d6>=5`): the outcome is a
+  count of dice that satisfy the comparator, an integer in `0` to `N`,
+  rather than a summed total, distributed exactly as a binomial over
+  that range. A success-counting notation is a single bare dice term
+  with a comparator; it does not take a keep selector, explode marker,
+  modifier, or a `+`/`-` join with other terms or constants.
+  [`roll()`](https://felixmil.github.io/rollr2/reference/roll.md) and
+  [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)
+  warn once on a degenerate pool whose target makes every die always or
+  never succeed, still returning the correct count.

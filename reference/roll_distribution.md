@@ -51,7 +51,13 @@ plot(x, ...)
   terms, plus bare integer constants, may be joined with `+` or `-` into
   one notation (e.g. `1d20+1d6`, `2d20h+2d20l`); at least one dice term
   is required and each keep or drop selector applies within its own term
-  only.
+  only. A trailing success comparator (`NdX>=T`, `NdX>T`, `NdX<=T`,
+  `NdX<T` against an integer target `T`, e.g. `5d10>=8`, `6d6>=5`) turns
+  the whole notation into a success-counting pool: each simulated roll
+  is then a count of dice that satisfy the comparator (`0..N`), not a
+  summed total. A success-counting notation is a single bare dice term
+  with a comparator (no keep or drop selector, explode marker, modifier,
+  join, or constant).
 
 - n:
 
@@ -77,8 +83,12 @@ constants), `n`, `terms` (the parsed per-term breakdown), and the
 original `notation`. For a single-term notation the parsed components
 `dice_n`, `x`, `m`, `keep`, `keep_n`, `reroll`, `reroll_t` are also
 present at the top level; they are omitted for a multi-term notation.
-Its [`print()`](https://rdrr.io/r/base/print.html) method renders the
-counts and a text histogram for the console.
+For a success-counting notation the outcome is a success count rather
+than a summed total: `range` is the success-count range `c(0, N)`,
+`counts` are observed success counts, and `success` is `TRUE`; a
+summed-total distribution carries no `success` field. Its
+[`print()`](https://rdrr.io/r/base/print.html) method renders the counts
+and a text histogram for the console.
 
 ## Details
 

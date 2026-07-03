@@ -236,6 +236,32 @@ further signed integer, once the term already has a modifier, becomes a
 standalone constant term: `1d6+3+1` is a dice term with modifier `+3`
 plus a constant `+1`.
 
+### Success-counting pools
+
+A trailing comparator against an integer target turns the whole notation
+into a success-counting pool. Instead of summing faces, the pool counts
+how many dice satisfy the comparator, so its outcome is a success count
+in `0` to `N` rather than a total. This is how dice-pool systems (World
+of Darkness, Shadowrun, and similar) resolve a roll.
+
+| Form     | Meaning                          | Example   |
+|----------|----------------------------------|-----------|
+| `NdX>=T` | Count dice showing at least `T`  | `5d10>=8` |
+| `NdX>T`  | Count dice showing more than `T` | `5d10>8`  |
+| `NdX<=T` | Count dice showing at most `T`   | `5d10<=3` |
+| `NdX<T`  | Count dice showing less than `T` | `5d10<3`  |
+
+For example, `5d10>=8` rolls five ten-sided dice and counts how many
+show 8, 9, or 10, and `6d6>=5` counts how many of six six-sided dice
+show 5 or 6. Each die is an independent success with a fixed
+probability, so the count follows a binomial distribution over `0` to
+`N`, which `roll(compare = TRUE)` and the plot methods show exactly.
+
+A success-counting notation stands alone: it is a single bare dice term
+with a comparator, and it does not take a keep selector, an explode
+marker, a modifier, or a `+`/`-` join with other terms or constants. The
+four comparators above are the whole set.
+
 ### Defaults
 
 - A missing die count means one die (`d6` is the same as `1d6`).

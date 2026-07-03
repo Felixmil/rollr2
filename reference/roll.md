@@ -56,7 +56,19 @@ plot(x, ...)
   plus bare integer constants, may be joined with `+` or `-` into one
   notation (e.g. `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`); at least
   one dice term is required and each keep or drop selector applies
-  within its own term only. See
+  within its own term only.
+
+  A trailing success comparator turns the whole notation into a
+  success-counting pool: `NdX>=T`, `NdX>T`, `NdX<=T`, or `NdX<T` against
+  an integer target `T` (e.g. `5d10>=8`, `6d6>=5`). The outcome is then
+  a count of dice that satisfy the comparator, an integer in `0..N`, not
+  a summed total. A die succeeds when its face satisfies the comparator
+  against `T`, with per-die probability `p` equal to the fraction of
+  `1..X` faces that satisfy it, so the count is exactly Binomial(`N`,
+  `p`). A success-counting notation is a single bare dice term with a
+  comparator: it takes no keep or drop selector, explode marker, reroll
+  marker, or modifier, and does not join with other terms or constants.
+  See
   [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)
   to summarise many rolls.
 
@@ -96,7 +108,11 @@ for a multi-term notation, where per-term access via `terms` is
 required. For an exploding or reroll term `dice` still lists every
 physical die including rerolls in draw order (for a reroll term, the
 rerolled-away faces are listed too), and `kept` lists the kept per-die
-values.
+values. For a success-counting notation the outcome is a success count,
+not a summed total: `total` (also `successes`) is the number of dice
+that satisfy the comparator (`0..N`), `successful` is the subset of
+`dice` that satisfy it, and `success` is `TRUE`; a summed-total roll
+carries none of these success fields.
 
 ## Details
 
@@ -132,12 +148,16 @@ roll("1d20+1d6+3")
 #> Dice:  18
 #> Dice:  3
 #> Total: 24
+roll("5d10>=8")
+#> <roll> 5d10>=8
+#> Dice:      3, 6, 6, 4, 8
+#> Successes: 1 of 5 (faces >= 8)
 roll("2d6", compare = TRUE)
 #> <roll> 2d6
-#> Dice:  3, 6
-#> Total: 9
+#> Dice:  4, 6
+#> Total: 10
 #> 
-#> Distribution for 2d6: this roll beats 72% of outcomes
+#> Distribution for 2d6: this roll beats 83% of outcomes
 #>  2 | #######  7
 #>  3 | ############# 13
 #>  4 | #################### 20
@@ -145,8 +165,8 @@ roll("2d6", compare = TRUE)
 #>  6 | ################################# 33
 #>  7 | ######################################## 40
 #>  8 | ################################# 33
-#>  9 | ########################### 27 <- this roll
-#> 10 | #################### 20
+#>  9 | ########################### 27
+#> 10 | #################### 20 <- this roll
 #> 11 | ############# 13
 #> 12 | #######  7
 #> 

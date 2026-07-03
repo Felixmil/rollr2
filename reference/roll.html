@@ -105,8 +105,18 @@ explode marker: reroll replaces the die's value, it does not sum. So
 never warns. Several such terms, plus bare integer constants, may be
 joined with <code>+</code> or <code>-</code> into one notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>,
 <code>1d20+1d6+1d4+3</code>); at least one dice term is required and each keep or drop
-selector applies within its own term only. See <code><a href="roll_distribution.html">roll_distribution()</a></code> to
-summarise many rolls.</p></dd>
+selector applies within its own term only.</p>
+<p>A trailing success comparator turns the whole notation into a
+success-counting pool: <code>NdX&gt;=T</code>, <code>NdX&gt;T</code>, <code>NdX&lt;=T</code>, or <code>NdX&lt;T</code> against an
+integer target <code>T</code> (e.g. <code>5d10&gt;=8</code>, <code>6d6&gt;=5</code>). The outcome is then a count
+of dice that satisfy the comparator, an integer in <code>0..N</code>, not a summed
+total. A die succeeds when its face satisfies the comparator against <code>T</code>,
+with per-die probability <code>p</code> equal to the fraction of <code>1..X</code> faces that
+satisfy it, so the count is exactly Binomial(<code>N</code>, <code>p</code>). A success-counting
+notation is a single bare dice term with a comparator: it takes no keep or
+drop selector, explode marker, reroll marker, or modifier, and does not
+join with other terms or constants. See <code><a href="roll_distribution.html">roll_distribution()</a></code> to summarise
+many rolls.</p></dd>
 
 
 <dt id="arg-compare">compare<a class="anchor" aria-label="anchor" href="#arg-compare"></a></dt>
@@ -143,7 +153,11 @@ the top level; they are omitted for a multi-term notation, where per-term
 access via <code>terms</code> is required. For an exploding or reroll term <code>dice</code>
 still lists every physical die including rerolls in draw order (for a
 reroll term, the rerolled-away faces are listed too), and <code>kept</code> lists the
-kept per-die values.</p>
+kept per-die values. For a success-counting notation the outcome is a
+success count, not a summed total: <code>total</code> (also <code>successes</code>) is the number
+of dice that satisfy the comparator (<code>0..N</code>), <code>successful</code> is the subset of
+<code>dice</code> that satisfy it, and <code>success</code> is <code>TRUE</code>; a summed-total roll
+carries none of these success fields.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -176,12 +190,16 @@ the top level and can be captured and extended with <code>+</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  18</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Total: 24</span>
+<span class="r-in"><span><span class="fu">roll</span><span class="op">(</span><span class="st">"5d10&gt;=8"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;roll&gt; 5d10&gt;=8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:      3, 6, 6, 4, 8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Successes: 1 of 5 (faces &gt;= 8)</span>
 <span class="r-in"><span><span class="fu">roll</span><span class="op">(</span><span class="st">"2d6"</span>, compare <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;roll&gt; 2d6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  3, 6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 9</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  4, 6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Distribution for 2d6: this roll beats 72% of outcomes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Distribution for 2d6: this roll beats 83% of outcomes</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2 | #######  7</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3 | ############# 13</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4 | #################### 20</span>
@@ -189,8 +207,8 @@ the top level and can be captured and extended with <code>+</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  6 | ################################# 33</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  7 | ######################################## 40</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  8 | ################################# 33</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  9 | ########################### 27 &lt;- this roll</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10 | #################### 20</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  9 | ########################### 27</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 | #################### 20 &lt;- this roll</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 11 | ############# 13</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 12 | #######  7</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
