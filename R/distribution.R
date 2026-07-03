@@ -591,7 +591,13 @@ term_counts <- function(n, x, keep, keep_n) {
 # into the single largest enumerated outcome `explode_per_die_max`, the outcome
 # the capped sampler produces, so the vector sums to 1 and matches the sampler
 # by construction. The residual is order x^-100, below float resolution, so the
-# truncation is numerically invisible yet finite.
+# truncation is numerically invisible yet finite. The folded residual is
+# clamped at zero: summing ~explode_cap probability terms accumulates
+# floating-point round-off whose sign is platform-dependent (the same reason
+# the FFT-based `conv_open` comment documents), so `1 - sum(probs)` can land a
+# few ULPs below zero on some platforms. Clamping removes only that sub-epsilon
+# noise (never any genuine mass) so a negative probability cannot escape into
+# the exact PMF downstream.
 explode_die_probs <- function(x, explode) {
   per_die_max <- explode_per_die_max(x, explode)
   probs <- numeric(per_die_max)
@@ -610,8 +616,11 @@ explode_die_probs <- function(x, explode) {
     probs[base + faces] <- 1 / x^(j + 1L)
   }
   # Fold the residual tail into the cap outcome so the vector sums to 1 and
-  # equals the sampler's force-stopped total.
-  probs[per_die_max] <- 1 - sum(probs)
+  # equals the sampler's force-stopped total. Clamp at zero so a
+  # platform-dependent round-off overshoot in `sum(probs)` (a few ULPs above 1)
+  # cannot turn the residual negative; the true residual is order x^-100, so
+  # clamping only removes sub-epsilon noise, never genuine mass.
+  probs[per_die_max] <- max(0, 1 - sum(probs))
   probs
 }
 
