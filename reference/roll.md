@@ -30,25 +30,33 @@ plot(x, ...)
   whitespace-tolerant), optionally with a keep selector `h`/`l` and an
   optional count after the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`),
   which keeps the highest (`h`) or lowest (`l`) `K` dice (defaulting to
-  `K = 1`). A per-die marker may follow the die size, before any keep
-  selector or modifier: either an explode marker or a reroll marker, but
-  not both (they are mutually exclusive within a term). The explode
-  marker is `!` (rerolls a maximum-face die exactly once and sums the
-  two faces; the extra die does not itself explode) or `!!` (keeps
-  rerolling while the maximum recurs, capped at 100 chained rerolls per
-  die). So `2d6!`, `2d6!!`, `4d6!h3`, and `2d6!+1` are all valid. When a
-  `!!` die reaches the cap, `roll()` emits a warning while still
-  returning a valid roll. The reroll marker is `rT` (rerolls any die
-  showing `<= T` exactly once and keeps the new value unconditionally,
-  even if it is also `<= T`) or `rrT` (rerolls a die showing `<= T`
-  repeatedly until it lands strictly above `T`), where the threshold `T`
-  is required and bounded `1 <= T <= X - 1`. Contrast the explode
-  marker: reroll replaces the die's value, it does not sum. So `2d6r1`,
-  `1d20rr1`, `4d6r1h3`, and `2d6r1+2` are all valid, and reroll never
-  warns. Several such terms, plus bare integer constants, may be joined
-  with `+` or `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`,
-  `1d20+1d6+1d4+3`); at least one dice term is required and each keep
-  selector applies within its own term only. See
+  `K = 1`). In the same slot a drop selector `dl`/`dh`/`d` instead
+  discards dice and sums the rest: `NdXdlK` drops the lowest `K`,
+  `NdXdhK` drops the highest `K`, and the shorthand `NdXdK` drops the
+  lowest `K`; a missing count drops one die. Drop is the inverse
+  spelling of keep, so `NdXdlK` is `NdXh(N-K)` and `NdXdhK` is
+  `NdXl(N-K)`; the conventional D&D roll `4d6dl1` (drop the lowest of
+  four d6) is `4d6h3`. The drop count `K` must satisfy `1 <= K <= N - 1`
+  (drop at least one, leave at least one). A per-die marker may follow
+  the die size, before any keep or drop selector or modifier: either an
+  explode marker or a reroll marker, but not both (they are mutually
+  exclusive within a term). The explode marker is `!` (rerolls a
+  maximum-face die exactly once and sums the two faces; the extra die
+  does not itself explode) or `!!` (keeps rerolling while the maximum
+  recurs, capped at 100 chained rerolls per die). So `2d6!`, `2d6!!`,
+  `4d6!h3`, and `2d6!+1` are all valid. When a `!!` die reaches the cap,
+  `roll()` emits a warning while still returning a valid roll. The
+  reroll marker is `rT` (rerolls any die showing `<= T` exactly once and
+  keeps the new value unconditionally, even if it is also `<= T`) or
+  `rrT` (rerolls a die showing `<= T` repeatedly until it lands strictly
+  above `T`), where the threshold `T` is required and bounded
+  `1 <= T <= X - 1`. Contrast the explode marker: reroll replaces the
+  die's value, it does not sum. So `2d6r1`, `1d20rr1`, `4d6r1h3`, and
+  `2d6r1+2` are all valid, and reroll never warns. Several such terms,
+  plus bare integer constants, may be joined with `+` or `-` into one
+  notation (e.g. `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`); at least
+  one dice term is required and each keep or drop selector applies
+  within its own term only. See
   [`roll_distribution()`](https://felixmil.github.io/rollr2/reference/roll_distribution.md)
   to summarise many rolls.
 

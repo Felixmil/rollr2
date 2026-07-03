@@ -34,7 +34,9 @@ roll("2d20+2")
 ```
 
 A keep selector like `4d6h3` keeps only the highest (`h`) or lowest
-(`l`) dice; the printout then shows which dice were kept.
+(`l`) dice; the printout then shows which dice were kept. The inverse
+drop spelling `4d6dl1` (drop the lowest of four d6, the conventional D&D
+ability-score roll) is the same thing said the other way round.
 
 ``` r
 

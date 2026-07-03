@@ -81,10 +81,17 @@ contribution. Bare integer terms (constants) are added directly. The grand
 <code>d</code>, whitespace-tolerant), optionally with a keep selector <code>h</code>/<code>l</code> and an
 optional count after the die size (e.g. <code>2d20h</code>, <code>4d6h3</code>, <code>3d6l2</code>), which
 keeps the highest (<code>h</code>) or lowest (<code>l</code>) <code>K</code> dice (defaulting to <code>K = 1</code>).
-A per-die marker may follow the die size, before any keep selector or
-modifier: either an explode marker or a reroll marker, but not both (they
-are mutually exclusive within a term). The explode marker is <code>!</code> (rerolls
-a maximum-face die exactly once and sums the two faces; the extra die does
+In the same slot a drop selector <code>dl</code>/<code>dh</code>/<code>d</code> instead discards dice and
+sums the rest: <code>NdXdlK</code> drops the lowest <code>K</code>, <code>NdXdhK</code> drops the highest
+<code>K</code>, and the shorthand <code>NdXdK</code> drops the lowest <code>K</code>; a missing count drops
+one die. Drop is the inverse spelling of keep, so <code>NdXdlK</code> is <code>NdXh(N-K)</code>
+and <code>NdXdhK</code> is <code>NdXl(N-K)</code>; the conventional D&amp;D roll <code>4d6dl1</code> (drop the
+lowest of four d6) is <code>4d6h3</code>. The drop count <code>K</code> must satisfy
+<code>1 &lt;= K &lt;= N - 1</code> (drop at least one, leave at least one). A per-die marker
+may follow the die size, before any keep or drop selector or modifier:
+either an explode marker or a reroll marker, but not both (they are
+mutually exclusive within a term). The explode marker is <code>!</code> (rerolls a
+maximum-face die exactly once and sums the two faces; the extra die does
 not itself explode) or <code>!!</code> (keeps rerolling while the maximum recurs,
 capped at 100 chained rerolls per die). So <code>2d6!</code>, <code>2d6!!</code>, <code>4d6!h3</code>, and
 <code>2d6!+1</code> are all valid. When a <code>!!</code> die reaches the cap, <code>roll()</code> emits a
@@ -97,7 +104,7 @@ explode marker: reroll replaces the die's value, it does not sum. So
 <code>2d6r1</code>, <code>1d20rr1</code>, <code>4d6r1h3</code>, and <code>2d6r1+2</code> are all valid, and reroll
 never warns. Several such terms, plus bare integer constants, may be
 joined with <code>+</code> or <code>-</code> into one notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>,
-<code>1d20+1d6+1d4+3</code>); at least one dice term is required and each keep
+<code>1d20+1d6+1d4+3</code>); at least one dice term is required and each keep or drop
 selector applies within its own term only. See <code><a href="roll_distribution.html">roll_distribution()</a></code> to
 summarise many rolls.</p></dd>
 

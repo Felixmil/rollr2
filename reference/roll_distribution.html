@@ -80,21 +80,27 @@ integer constants, so each total is the grand total across all terms.</p>
 <code>NdX+M</code>, <code>NdX-M</code>, or the count-omitted <code>dX</code> variants (case-insensitive
 <code>d</code>, whitespace-tolerant), optionally with a keep selector <code>h</code>/<code>l</code> and an
 optional count after the die size (e.g. <code>2d20h</code>, <code>4d6h3</code>), keeping the
-highest/lowest <code>K</code> dice per roll (defaulting to <code>K = 1</code>). A per-die marker
-may follow the die size, before any keep selector or modifier: either an
-explode marker or a reroll marker, but not both (they are mutually
-exclusive within a term). The explode marker is <code>!</code> (rerolls a
-maximum-face die once and sums both faces) or <code>!!</code> (rerolls while the
-maximum recurs, capped at 100 chained rerolls per die), e.g. <code>2d6!</code>,
-<code>2d6!!</code>, <code>4d6!h3</code>; sampling is bounded by the same cap so it always
-terminates, and <code>roll_distribution()</code> does not itself warn on the cap. The
-reroll marker is <code>rT</code> (rerolls any die showing <code>&lt;= T</code> once and keeps the
-new value) or <code>rrT</code> (rerolls a die showing <code>&lt;= T</code> until it lands strictly
-above <code>T</code>), where the threshold <code>T</code> is required and bounded
-<code>1 &lt;= T &lt;= X - 1</code>, e.g. <code>2d6r1</code>, <code>1d20rr1</code>, <code>4d6r1h3</code>. Several such terms,
-plus bare integer constants, may be joined with <code>+</code> or <code>-</code> into one
-notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>); at least one dice term is
-required and each keep selector applies within its own term only.</p></dd>
+highest/lowest <code>K</code> dice per roll (defaulting to <code>K = 1</code>). In the same slot
+a drop selector <code>dl</code>/<code>dh</code>/<code>d</code> instead discards dice and sums the rest:
+<code>NdXdlK</code> drops the lowest <code>K</code>, <code>NdXdhK</code> drops the highest <code>K</code>, and the
+shorthand <code>NdXdK</code> drops the lowest <code>K</code>; a missing count drops one die. Drop
+is the inverse spelling of keep, so <code>NdXdlK</code> is <code>NdXh(N-K)</code> and <code>NdXdhK</code> is
+<code>NdXl(N-K)</code>; <code>4d6dl1</code> (the D&amp;D ability-score roll) is <code>4d6h3</code>. The drop
+count <code>K</code> must satisfy <code>1 &lt;= K &lt;= N - 1</code>. A per-die marker may follow the
+die size, before any keep or drop selector or modifier: either an explode
+marker or a reroll marker, but not both (they are mutually exclusive within
+a term). The explode marker is <code>!</code> (rerolls a maximum-face die once and
+sums both faces) or <code>!!</code> (rerolls while the maximum recurs, capped at 100
+chained rerolls per die), e.g. <code>2d6!</code>, <code>2d6!!</code>, <code>4d6!h3</code>; sampling is
+bounded by the same cap so it always terminates, and <code>roll_distribution()</code>
+does not itself warn on the cap. The reroll marker is <code>rT</code> (rerolls any die
+showing <code>&lt;= T</code> once and keeps the new value) or <code>rrT</code> (rerolls a die
+showing <code>&lt;= T</code> until it lands strictly above <code>T</code>), where the threshold <code>T</code>
+is required and bounded <code>1 &lt;= T &lt;= X - 1</code>, e.g. <code>2d6r1</code>, <code>1d20rr1</code>,
+<code>4d6r1h3</code>. Several such terms, plus bare integer constants, may be joined
+with <code>+</code> or <code>-</code> into one notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>); at
+least one dice term is required and each keep or drop selector applies
+within its own term only.</p></dd>
 
 
 <dt id="arg-n">n<a class="anchor" aria-label="anchor" href="#arg-n"></a></dt>
