@@ -242,6 +242,57 @@
       Warning:
       An exploding die reached the reroll cap of 100 and its chain was truncated.
 
+# print.roll echoes the reroll spelling and shows its dice (AC-3)
+
+    Code
+      print(roll("2d6r1"))
+    Output
+      <roll> 2d6r1
+      Dice:  1, 5, 1, 1
+      Total: 6
+
+---
+
+    Code
+      print(roll("1d20rr1"))
+    Output
+      <roll> 1d20rr1
+      Dice:  10
+      Total: 10
+
+# print.roll shows the kept per-die values for a reroll keep-selector term (AC-3)
+
+    Code
+      print(roll("4d6r1h3"))
+    Output
+      <roll> 4d6r1h3
+      Dice:  1, 5, 1, 1, 2, 4
+      Kept:  5, 4, 2
+      Total: 11
+
+# compare prints a reroll histogram over the theoretical range with the marked total (AC-5)
+
+    Code
+      print(r)
+    Output
+      <roll> 2d6r1
+      Dice:  6, 3
+      Total: 9
+      
+      Distribution for 2d6r1: this roll beats 62% of outcomes
+       2 | #  1
+       3 | ##  2
+       4 | ########## 10
+       5 | ################## 18
+       6 | ########################## 26
+       7 | ################################## 34
+       8 | ######################################## 40
+       9 | ################################ 32 <- this roll
+      10 | ######################## 24
+      11 | ################ 16
+      12 | ########  8
+      
+
 # print.roll shows one Dice line per term and a grand total (AC-3)
 
     Code
