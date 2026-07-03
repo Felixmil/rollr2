@@ -49,3 +49,14 @@
   [`plot()`](https://rdrr.io/r/graphics/plot.default.html) methods is
   depth-capped at the same cap and normalized to sum to 1, so it stays
   finite and matches the sampler.
+- Both functions gain a reroll marker in the same slot as the explode
+  marker (the two are mutually exclusive within a term): `rT` rerolls
+  once any die showing a value `<= T`, keeping the new value
+  unconditionally, while `rrT` rerolls a die showing `<= T` until it
+  lands strictly above `T` (e.g. `2d6r1`, `1d20rr1`, `4d6r1h3`,
+  `2d6r1+2`). The threshold `T` is required and must be between 1 and
+  the die size minus 1. Reroll changes each die’s value before any keep
+  selection and never warns; the exact outcome distribution feeding
+  `roll(compare = TRUE)` and both
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) methods
+  accounts for it and matches the sampler.

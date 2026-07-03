@@ -80,12 +80,18 @@ integer constants, so each total is the grand total across all terms.</p>
 <code>NdX+M</code>, <code>NdX-M</code>, or the count-omitted <code>dX</code> variants (case-insensitive
 <code>d</code>, whitespace-tolerant), optionally with a keep selector <code>h</code>/<code>l</code> and an
 optional count after the die size (e.g. <code>2d20h</code>, <code>4d6h3</code>), keeping the
-highest/lowest <code>K</code> dice per roll (defaulting to <code>K = 1</code>). An explode marker
-may follow the die size, before any keep selector or modifier: <code>!</code> rerolls
-a maximum-face die once and sums both faces, <code>!!</code> rerolls while the maximum
-recurs, capped at 100 chained rerolls per die (e.g. <code>2d6!</code>, <code>2d6!!</code>,
-<code>4d6!h3</code>). Sampling is bounded by the same cap so it always terminates;
-<code>roll_distribution()</code> does not itself warn on the cap. Several such terms,
+highest/lowest <code>K</code> dice per roll (defaulting to <code>K = 1</code>). A per-die marker
+may follow the die size, before any keep selector or modifier: either an
+explode marker or a reroll marker, but not both (they are mutually
+exclusive within a term). The explode marker is <code>!</code> (rerolls a
+maximum-face die once and sums both faces) or <code>!!</code> (rerolls while the
+maximum recurs, capped at 100 chained rerolls per die), e.g. <code>2d6!</code>,
+<code>2d6!!</code>, <code>4d6!h3</code>; sampling is bounded by the same cap so it always
+terminates, and <code>roll_distribution()</code> does not itself warn on the cap. The
+reroll marker is <code>rT</code> (rerolls any die showing <code>&lt;= T</code> once and keeps the
+new value) or <code>rrT</code> (rerolls a die showing <code>&lt;= T</code> until it lands strictly
+above <code>T</code>), where the threshold <code>T</code> is required and bounded
+<code>1 &lt;= T &lt;= X - 1</code>, e.g. <code>2d6r1</code>, <code>1d20rr1</code>, <code>4d6r1h3</code>. Several such terms,
 plus bare integer constants, may be joined with <code>+</code> or <code>-</code> into one
 notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>); at least one dice term is
 required and each keep selector applies within its own term only.</p></dd>
@@ -112,9 +118,9 @@ zero-count outcomes are omitted), <code>range</code> (the theoretical <code>c(mi
 of a grand total, the sum across terms of each term's own min/max plus the
 signed constants), <code>n</code>, <code>terms</code> (the parsed per-term breakdown), and the
 original <code>notation</code>. For a single-term notation the parsed components
-<code>dice_n</code>, <code>x</code>, <code>m</code>, <code>keep</code>, <code>keep_n</code> are also present at the top level;
-they are omitted for a multi-term notation. Its <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> method renders
-the counts and a text histogram for the console.</p>
+<code>dice_n</code>, <code>x</code>, <code>m</code>, <code>keep</code>, <code>keep_n</code>, <code>reroll</code>, <code>reroll_t</code> are also
+present at the top level; they are omitted for a multi-term notation. Its
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> method renders the counts and a text histogram for the console.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

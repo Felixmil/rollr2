@@ -81,16 +81,25 @@ contribution. Bare integer terms (constants) are added directly. The grand
 <code>d</code>, whitespace-tolerant), optionally with a keep selector <code>h</code>/<code>l</code> and an
 optional count after the die size (e.g. <code>2d20h</code>, <code>4d6h3</code>, <code>3d6l2</code>), which
 keeps the highest (<code>h</code>) or lowest (<code>l</code>) <code>K</code> dice (defaulting to <code>K = 1</code>).
-An explode marker may follow the die size, before any keep selector or
-modifier: <code>!</code> rerolls a maximum-face die exactly once and sums the two
-faces (the extra die does not itself explode), while <code>!!</code> keeps rerolling
-while the maximum recurs, capped at 100 chained rerolls per die. So <code>2d6!</code>,
-<code>2d6!!</code>, <code>4d6!h3</code>, and <code>2d6!+1</code> are all valid. When a <code>!!</code> die reaches the
-cap, <code>roll()</code> emits a warning while still returning a valid roll.
-Several such terms, plus bare integer constants, may be joined with <code>+</code> or
-<code>-</code> into one notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>, <code>1d20+1d6+1d4+3</code>);
-at least one dice term is required and each keep selector applies within
-its own term only. See <code><a href="roll_distribution.html">roll_distribution()</a></code> to summarise many rolls.</p></dd>
+A per-die marker may follow the die size, before any keep selector or
+modifier: either an explode marker or a reroll marker, but not both (they
+are mutually exclusive within a term). The explode marker is <code>!</code> (rerolls
+a maximum-face die exactly once and sums the two faces; the extra die does
+not itself explode) or <code>!!</code> (keeps rerolling while the maximum recurs,
+capped at 100 chained rerolls per die). So <code>2d6!</code>, <code>2d6!!</code>, <code>4d6!h3</code>, and
+<code>2d6!+1</code> are all valid. When a <code>!!</code> die reaches the cap, <code>roll()</code> emits a
+warning while still returning a valid roll. The reroll marker is <code>rT</code>
+(rerolls any die showing <code>&lt;= T</code> exactly once and keeps the new value
+unconditionally, even if it is also <code>&lt;= T</code>) or <code>rrT</code> (rerolls a die
+showing <code>&lt;= T</code> repeatedly until it lands strictly above <code>T</code>), where the
+threshold <code>T</code> is required and bounded <code>1 &lt;= T &lt;= X - 1</code>. Contrast the
+explode marker: reroll replaces the die's value, it does not sum. So
+<code>2d6r1</code>, <code>1d20rr1</code>, <code>4d6r1h3</code>, and <code>2d6r1+2</code> are all valid, and reroll
+never warns. Several such terms, plus bare integer constants, may be
+joined with <code>+</code> or <code>-</code> into one notation (e.g. <code>1d20+1d6</code>, <code>2d20h+2d20l</code>,
+<code>1d20+1d6+1d4+3</code>); at least one dice term is required and each keep
+selector applies within its own term only. See <code><a href="roll_distribution.html">roll_distribution()</a></code> to
+summarise many rolls.</p></dd>
 
 
 <dt id="arg-compare">compare<a class="anchor" aria-label="anchor" href="#arg-compare"></a></dt>
@@ -122,10 +131,12 @@ dice in term order), <code>terms</code> (the per-term breakdown, each element a 
 with the term's parsed fields plus its <code>dice</code>, <code>kept</code>, and <code>subtotal</code>),
 the original <code>notation</code>, and <code>compare</code> (the logical flag controlling the
 print method). For a single-term notation the parsed components <code>n</code>, <code>x</code>,
-<code>m</code>, <code>keep</code>, <code>keep_n</code>, <code>explode</code> are also present at the top level; they
-are omitted for a multi-term notation, where per-term access via <code>terms</code>
-is required. For an exploding term <code>dice</code> still lists every physical die
-including rerolls in draw order, and <code>kept</code> lists the kept per-die totals.</p>
+<code>m</code>, <code>keep</code>, <code>keep_n</code>, <code>explode</code>, <code>reroll</code>, <code>reroll_t</code> are also present at
+the top level; they are omitted for a multi-term notation, where per-term
+access via <code>terms</code> is required. For an exploding or reroll term <code>dice</code>
+still lists every physical die including rerolls in draw order (for a
+reroll term, the rerolled-away faces are listed too), and <code>kept</code> lists the
+kept per-die values.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

@@ -243,10 +243,24 @@
 <td>Keep count omitted, defaults to keeping one die</td>
 <td><code>2d20h</code></td>
 </tr>
+<tr class="even">
+<td><code>NdXrT</code></td>
+<td>Reroll once any die showing <code>&lt;= T</code>, keeping the new value</td>
+<td><code>2d6r2</code></td>
+</tr>
+<tr class="odd">
+<td><code>NdXrrT</code></td>
+<td>Reroll a die showing <code>&lt;= T</code> until it lands above <code>T</code>
+</td>
+<td><code>1d20rr1</code></td>
+</tr>
 </tbody>
 </table>
 <p>The keep selector follows the die size and comes before the modifier, so a full notation reads count, die size, optional keep selector, optional modifier, for example <code>4d6h3+1</code>.</p>
-<section class="level3"><h3 id="summing-several-terms">Summing several terms<a class="anchor" aria-label="anchor" href="#summing-several-terms"></a>
+<section class="level3"><h3 id="rerolling-low-dice">Rerolling low dice<a class="anchor" aria-label="anchor" href="#rerolling-low-dice"></a>
+</h3>
+<p>Some systems reroll dice that land at or below a threshold. The reroll marker follows the die size (before any keep selector or modifier) and comes in two forms, both with a required threshold <code>T</code>. Under <code>rT</code> (reroll once) any die showing a value <code>&lt;= T</code> is rerolled exactly once and the new value is kept unconditionally, even if it is also <code>&lt;= T</code>. This is the motivating case for D&amp;D 5e Great Weapon Fighting, where a damage die showing a 1 or 2 is rerolled once: <code>2d6r2</code>. Under <code>rrT</code> (reroll until above) a die showing <code>&lt;= T</code> is rerolled repeatedly until it lands strictly above <code>T</code>, so <code>1d20rr1</code> yields a value uniform over <code>2..20</code> and never a natural 1. The reroll marker composes with the keep selector and the modifier (<code>4d6r1h3</code>, <code>2d6r1+2</code>).</p>
+</section><section class="level3"><h3 id="summing-several-terms">Summing several terms<a class="anchor" aria-label="anchor" href="#summing-several-terms"></a>
 </h3>
 <p>Several terms may be joined with <code>+</code> or <code>-</code> into one notation, and a bare integer is a constant term.</p>
 <table class="table caption-top">
@@ -288,6 +302,7 @@
 <li>The die count must be a positive integer.</li>
 <li>The die size must be an integer of at least 2.</li>
 <li>The keep count must be between 1 and the die count (keeping zero dice, or more dice than were rolled, is rejected).</li>
+<li>The reroll threshold <code>T</code> must be between 1 and the die size minus 1 (<code>1 &lt;= T &lt;= X - 1</code>); a threshold of 0 never fires and a threshold at or above the die size is rejected, so <code>2d6r0</code> and <code>2d6r6</code> do not parse.</li>
 </ul>
 <p>Non-integer counts, die sizes, and keep counts (such as <code>2.5d6</code> or <code>2d6h1.5</code>) do not parse.</p>
 </section></section><script id="quarto-html-after-body" type="application/javascript">

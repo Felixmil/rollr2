@@ -29,16 +29,22 @@ plot(x, ...)
   `NdX-M`, or the count-omitted `dX` variants (case-insensitive `d`,
   whitespace-tolerant), optionally with a keep selector `h`/`l` and an
   optional count after the die size (e.g. `2d20h`, `4d6h3`), keeping the
-  highest/lowest `K` dice per roll (defaulting to `K = 1`). An explode
+  highest/lowest `K` dice per roll (defaulting to `K = 1`). A per-die
   marker may follow the die size, before any keep selector or modifier:
-  `!` rerolls a maximum-face die once and sums both faces, `!!` rerolls
-  while the maximum recurs, capped at 100 chained rerolls per die (e.g.
-  `2d6!`, `2d6!!`, `4d6!h3`). Sampling is bounded by the same cap so it
-  always terminates; `roll_distribution()` does not itself warn on the
-  cap. Several such terms, plus bare integer constants, may be joined
-  with `+` or `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`); at
-  least one dice term is required and each keep selector applies within
-  its own term only.
+  either an explode marker or a reroll marker, but not both (they are
+  mutually exclusive within a term). The explode marker is `!` (rerolls
+  a maximum-face die once and sums both faces) or `!!` (rerolls while
+  the maximum recurs, capped at 100 chained rerolls per die), e.g.
+  `2d6!`, `2d6!!`, `4d6!h3`; sampling is bounded by the same cap so it
+  always terminates, and `roll_distribution()` does not itself warn on
+  the cap. The reroll marker is `rT` (rerolls any die showing `<= T`
+  once and keeps the new value) or `rrT` (rerolls a die showing `<= T`
+  until it lands strictly above `T`), where the threshold `T` is
+  required and bounded `1 <= T <= X - 1`, e.g. `2d6r1`, `1d20rr1`,
+  `4d6r1h3`. Several such terms, plus bare integer constants, may be
+  joined with `+` or `-` into one notation (e.g. `1d20+1d6`,
+  `2d20h+2d20l`); at least one dice term is required and each keep
+  selector applies within its own term only.
 
 - n:
 
@@ -62,10 +68,10 @@ outcomes are omitted), `range` (the theoretical `c(min, max)` of a grand
 total, the sum across terms of each term's own min/max plus the signed
 constants), `n`, `terms` (the parsed per-term breakdown), and the
 original `notation`. For a single-term notation the parsed components
-`dice_n`, `x`, `m`, `keep`, `keep_n` are also present at the top level;
-they are omitted for a multi-term notation. Its
-[`print()`](https://rdrr.io/r/base/print.html) method renders the counts
-and a text histogram for the console.
+`dice_n`, `x`, `m`, `keep`, `keep_n`, `reroll`, `reroll_t` are also
+present at the top level; they are omitted for a multi-term notation.
+Its [`print()`](https://rdrr.io/r/base/print.html) method renders the
+counts and a text histogram for the console.
 
 ## Details
 

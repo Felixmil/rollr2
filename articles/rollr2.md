@@ -173,19 +173,35 @@ d$range
 The parser accepts the following forms. The leading `d` is
 case-insensitive and surrounding whitespace is tolerated.
 
-| Form            | Meaning                                         | Example  |
-|-----------------|-------------------------------------------------|----------|
-| `NdX`           | Roll `N` dice with `X` sides                    | `3d6`    |
-| `dX`            | Count omitted, defaults to one die              | `d20`    |
-| `NdX+M`         | Add a modifier `M` to the total                 | `2d20+2` |
-| `NdX-M`         | Subtract a modifier `M` from the total          | `1d8-1`  |
-| `NdXhK`         | Keep the highest `K` dice                       | `4d6h3`  |
-| `NdXlK`         | Keep the lowest `K` dice                        | `3d6l2`  |
-| `NdXh` / `NdXl` | Keep count omitted, defaults to keeping one die | `2d20h`  |
+| Form | Meaning | Example |
+|----|----|----|
+| `NdX` | Roll `N` dice with `X` sides | `3d6` |
+| `dX` | Count omitted, defaults to one die | `d20` |
+| `NdX+M` | Add a modifier `M` to the total | `2d20+2` |
+| `NdX-M` | Subtract a modifier `M` from the total | `1d8-1` |
+| `NdXhK` | Keep the highest `K` dice | `4d6h3` |
+| `NdXlK` | Keep the lowest `K` dice | `3d6l2` |
+| `NdXh` / `NdXl` | Keep count omitted, defaults to keeping one die | `2d20h` |
+| `NdXrT` | Reroll once any die showing `<= T`, keeping the new value | `2d6r2` |
+| `NdXrrT` | Reroll a die showing `<= T` until it lands above `T` | `1d20rr1` |
 
 The keep selector follows the die size and comes before the modifier, so
 a full notation reads count, die size, optional keep selector, optional
 modifier, for example `4d6h3+1`.
+
+### Rerolling low dice
+
+Some systems reroll dice that land at or below a threshold. The reroll
+marker follows the die size (before any keep selector or modifier) and
+comes in two forms, both with a required threshold `T`. Under `rT`
+(reroll once) any die showing a value `<= T` is rerolled exactly once
+and the new value is kept unconditionally, even if it is also `<= T`.
+This is the motivating case for D&D 5e Great Weapon Fighting, where a
+damage die showing a 1 or 2 is rerolled once: `2d6r2`. Under `rrT`
+(reroll until above) a die showing `<= T` is rerolled repeatedly until
+it lands strictly above `T`, so `1d20rr1` yields a value uniform over
+`2..20` and never a natural 1. The reroll marker composes with the keep
+selector and the modifier (`4d6r1h3`, `2d6r1+2`).
 
 ### Summing several terms
 
@@ -224,6 +240,10 @@ The parser rejects notation outside these bounds with a clear error:
 - The die size must be an integer of at least 2.
 - The keep count must be between 1 and the die count (keeping zero dice,
   or more dice than were rolled, is rejected).
+- The reroll threshold `T` must be between 1 and the die size minus 1
+  (`1 <= T <= X - 1`); a threshold of 0 never fires and a threshold at
+  or above the die size is rejected, so `2d6r0` and `2d6r6` do not
+  parse.
 
 Non-integer counts, die sizes, and keep counts (such as `2.5d6` or
 `2d6h1.5`) do not parse.
