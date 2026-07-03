@@ -13,9 +13,9 @@ id** (`L1`, `L2`, ...) so it can never collide with a numeric GitHub
 issue number sharing the same folder.
 
 After this skill runs you can refine it (`/refine-issue L3`) and drive
-the full pipeline on it (`/file-pipeline L3` or
-`/file-pipeline-workflow L3`), exactly as you would a GitHub issue; those
-skills detect the `L` prefix and read `issue.md` instead of GitHub.
+the full pipeline on it (`/file-pipeline L3`), exactly as you would a
+GitHub issue; those skills detect the `L` prefix and read `issue.md`
+instead of GitHub.
 
 ## Steps
 
@@ -78,8 +78,7 @@ skills detect the `L` prefix and read `issue.md` instead of GitHub.
    ```
    Created local issue <id> at <root>/<id>/.
    Refine it:      /refine-issue <id>
-   Run pipeline:   /file-pipeline <id>          (in-session)
-              or:  /file-pipeline-workflow <id> (dynamic workflow)
+   Run pipeline:   /file-pipeline <id>
    ```
 
 ## Anti-patterns
