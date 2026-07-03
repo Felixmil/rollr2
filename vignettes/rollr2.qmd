@@ -50,7 +50,7 @@ r$total
 When the notation carries a keep selector, `kept` is a subset of `dice` and the printout gains a `Kept:` line. Here `4d6h3` rolls four six-sided dice and keeps the highest three.
 
 ```{r}
-set.seed(42)
+set.seed(19)
 kept_roll <- roll("4d6h3")
 kept_roll
 

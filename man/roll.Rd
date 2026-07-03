@@ -107,7 +107,7 @@ remains a print-only switch. The returned object auto-prints when called at
 the top level and can be captured and extended with \code{+}.
 }
 \examples{
-set.seed(1)
+set.seed(8)
 roll("2d20+2")
 roll("d6")
 roll("4d6h3")
