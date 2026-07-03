@@ -109,20 +109,20 @@
 <p>When the notation carries a keep selector, <code>kept</code> is a subset of <code>dice</code> and the printout gains a <code>Kept:</code> line. Here <code>4d6h3</code> rolls four six-sided dice and keeps the highest three.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">19</span><span class="op">)</span></span>
 <span><span class="va">kept_roll</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"4d6h3"</span><span class="op">)</span></span>
 <span><span class="va">kept_roll</span></span>
 <span><span class="co">#&gt; &lt;roll&gt; 4d6h3</span></span>
-<span><span class="co">#&gt; Dice:  1, 5, 1, 1</span></span>
-<span><span class="co">#&gt; Kept:  5, 1, 1</span></span>
-<span><span class="co">#&gt; Total: 7</span></span>
+<span><span class="co">#&gt; Dice:  5, 2, 6, 3</span></span>
+<span><span class="co">#&gt; Kept:  6, 5, 3</span></span>
+<span><span class="co">#&gt; Total: 14</span></span>
 <span></span>
 <span><span class="va">kept_roll</span><span class="op">$</span><span class="va">dice</span></span>
-<span><span class="co">#&gt; [1] 1 5 1 1</span></span>
+<span><span class="co">#&gt; [1] 5 2 6 3</span></span>
 <span><span class="va">kept_roll</span><span class="op">$</span><span class="va">kept</span></span>
-<span><span class="co">#&gt; [1] 5 1 1</span></span>
+<span><span class="co">#&gt; [1] 6 5 3</span></span>
 <span><span class="va">kept_roll</span><span class="op">$</span><span class="va">total</span></span>
-<span><span class="co">#&gt; [1] 7</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 14</span></span></code></pre></div>
 </div>
 </section><section class="level2"><h2 id="add-several-terms-together">Add several terms together<a class="anchor" aria-label="anchor" href="#add-several-terms-together"></a>
 </h2>

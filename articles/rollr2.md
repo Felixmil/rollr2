@@ -61,20 +61,20 @@ dice and keeps the highest three.
 
 ``` r
 
-set.seed(42)
+set.seed(19)
 kept_roll <- roll("4d6h3")
 kept_roll
 #> <roll> 4d6h3
-#> Dice:  1, 5, 1, 1
-#> Kept:  5, 1, 1
-#> Total: 7
+#> Dice:  5, 2, 6, 3
+#> Kept:  6, 5, 3
+#> Total: 14
 
 kept_roll$dice
-#> [1] 1 5 1 1
+#> [1] 5 2 6 3
 kept_roll$kept
-#> [1] 5 1 1
+#> [1] 6 5 3
 kept_roll$total
-#> [1] 7
+#> [1] 14
 ```
 
 ## Add several terms together

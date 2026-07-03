@@ -157,20 +157,20 @@ the top level and can be captured and extended with <code>+</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">8</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">roll</span><span class="op">(</span><span class="st">"2d20+2"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;roll&gt; 2d20+2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  4, 7</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 13</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  20, 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 24</span>
 <span class="r-in"><span><span class="fu">roll</span><span class="op">(</span><span class="st">"d6"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;roll&gt; d6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 4</span>
 <span class="r-in"><span><span class="fu">roll</span><span class="op">(</span><span class="st">"4d6h3"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;roll&gt; 4d6h3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  2, 5, 3, 6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Kept:  6, 5, 3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 14</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  2, 6, 1, 5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Kept:  6, 5, 2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 13</span>
 <span class="r-in"><span><span class="fu">roll</span><span class="op">(</span><span class="st">"1d20+1d6+3"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;roll&gt; 1d20+1d6+3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  18</span>
@@ -178,18 +178,18 @@ the top level and can be captured and extended with <code>+</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Total: 24</span>
 <span class="r-in"><span><span class="fu">roll</span><span class="op">(</span><span class="st">"2d6"</span>, compare <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;roll&gt; 2d6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  3, 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Dice:  3, 6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Total: 9</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Distribution for 2d6: this roll beats 8% of outcomes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Distribution for 2d6: this roll beats 72% of outcomes</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2 | #######  7</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3 | ############# 13</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  4 | #################### 20 &lt;- this roll</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4 | #################### 20</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5 | ########################### 27</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  6 | ################################# 33</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  7 | ######################################## 40</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  8 | ################################# 33</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  9 | ########################### 27</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  9 | ########################### 27 &lt;- this roll</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 10 | #################### 20</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 11 | ############# 13</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 12 | #######  7</span>

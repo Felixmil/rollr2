@@ -113,20 +113,20 @@ extended with `+`.
 ## Examples
 
 ``` r
-set.seed(1)
+set.seed(8)
 roll("2d20+2")
 #> <roll> 2d20+2
-#> Dice:  4, 7
-#> Total: 13
+#> Dice:  20, 2
+#> Total: 24
 roll("d6")
 #> <roll> d6
-#> Dice:  1
-#> Total: 1
+#> Dice:  4
+#> Total: 4
 roll("4d6h3")
 #> <roll> 4d6h3
-#> Dice:  2, 5, 3, 6
-#> Kept:  6, 5, 3
-#> Total: 14
+#> Dice:  2, 6, 1, 5
+#> Kept:  6, 5, 2
+#> Total: 13
 roll("1d20+1d6+3")
 #> <roll> 1d20+1d6+3
 #> Dice:  18
@@ -134,18 +134,18 @@ roll("1d20+1d6+3")
 #> Total: 24
 roll("2d6", compare = TRUE)
 #> <roll> 2d6
-#> Dice:  3, 1
-#> Total: 4
+#> Dice:  3, 6
+#> Total: 9
 #> 
-#> Distribution for 2d6: this roll beats 8% of outcomes
+#> Distribution for 2d6: this roll beats 72% of outcomes
 #>  2 | #######  7
 #>  3 | ############# 13
-#>  4 | #################### 20 <- this roll
+#>  4 | #################### 20
 #>  5 | ########################### 27
 #>  6 | ################################# 33
 #>  7 | ######################################## 40
 #>  8 | ################################# 33
-#>  9 | ########################### 27
+#>  9 | ########################### 27 <- this roll
 #> 10 | #################### 20
 #> 11 | ############# 13
 #> 12 | #######  7

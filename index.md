@@ -40,12 +40,12 @@ ability-score roll) is the same thing said the other way round.
 
 ``` r
 
-set.seed(42)
+set.seed(19)
 roll("4d6h3")
 #> <roll> 4d6h3
-#> Dice:  1, 5, 1, 1
-#> Kept:  5, 1, 1
-#> Total: 7
+#> Dice:  5, 2, 6, 3
+#> Kept:  6, 5, 3
+#> Total: 14
 ```
 
 A reroll marker like `2d6r2` rerolls once any die showing a value at or
@@ -55,11 +55,11 @@ Great Weapon Fighting style reroll.
 
 ``` r
 
-set.seed(42)
+set.seed(7)
 roll("2d6r2")
 #> <roll> 2d6r2
-#> Dice:  1, 5, 1, 1
-#> Total: 6
+#> Dice:  2, 3, 4
+#> Total: 7
 ```
 
 A notation can also sum several terms and constants, joined with `+` or

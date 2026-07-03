@@ -81,19 +81,19 @@
 <span><span class="co">#&gt; Total: 24</span></span></code></pre></div>
 <p>A keep selector like <code>4d6h3</code> keeps only the highest (<code>h</code>) or lowest (<code>l</code>) dice; the printout then shows which dice were kept. The inverse drop spelling <code>4d6dl1</code> (drop the lowest of four d6, the conventional D&amp;D ability-score roll) is the same thing said the other way round.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">19</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"4d6h3"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll&gt; 4d6h3</span></span>
-<span><span class="co">#&gt; Dice:  1, 5, 1, 1</span></span>
-<span><span class="co">#&gt; Kept:  5, 1, 1</span></span>
-<span><span class="co">#&gt; Total: 7</span></span></code></pre></div>
+<span><span class="co">#&gt; Dice:  5, 2, 6, 3</span></span>
+<span><span class="co">#&gt; Kept:  6, 5, 3</span></span>
+<span><span class="co">#&gt; Total: 14</span></span></code></pre></div>
 <p>A reroll marker like <code>2d6r2</code> rerolls once any die showing a value at or below the threshold (here 2), keeping the new value; <code>rr</code> instead rerolls until the die lands above the threshold. This is the D&amp;D 5e Great Weapon Fighting style reroll.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">7</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/roll.html">roll</a></span><span class="op">(</span><span class="st">"2d6r2"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;roll&gt; 2d6r2</span></span>
-<span><span class="co">#&gt; Dice:  1, 5, 1, 1</span></span>
-<span><span class="co">#&gt; Total: 6</span></span></code></pre></div>
+<span><span class="co">#&gt; Dice:  2, 3, 4</span></span>
+<span><span class="co">#&gt; Total: 7</span></span></code></pre></div>
 <p>A notation can also sum several terms and constants, joined with <code>+</code> or <code>-</code>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
