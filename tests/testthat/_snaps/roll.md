@@ -1,3 +1,42 @@
+# print.roll on a drop notation shows the kept dice and echoes the drop spelling (AC-4)
+
+    Code
+      print(roll("4d6dl1"))
+    Output
+      <roll> 4d6dl1
+      Dice:  1, 5, 1, 1
+      Kept:  5, 1, 1
+      Total: 7
+
+# compare on a drop notation matches the keep shape while echoing the drop spelling (AC-5)
+
+    Code
+      print(roll("4d6dl1", compare = TRUE))
+    Output
+      <roll> 4d6dl1
+      Dice:  1, 5, 1, 1
+      Kept:  5, 1, 1
+      Total: 7
+      
+      Distribution for 4d6dl1: this roll beats 3% of outcomes
+       3 | #  1
+       4 | #  1
+       5 | ##  2
+       6 | #####  5
+       7 | #########  9 <- this roll
+       8 | ############## 14
+       9 | ##################### 21
+      10 | ############################ 28
+      11 | ################################## 34
+      12 | ####################################### 39
+      13 | ######################################## 40
+      14 | ##################################### 37
+      15 | ############################## 30
+      16 | ###################### 22
+      17 | ############# 13
+      18 | #####  5
+      
+
 # print.roll renders notation, dice, and total
 
     Code

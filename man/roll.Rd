@@ -18,10 +18,17 @@ roll(notation, compare = FALSE)
 \code{d}, whitespace-tolerant), optionally with a keep selector \code{h}/\code{l} and an
 optional count after the die size (e.g. \verb{2d20h}, \verb{4d6h3}, \verb{3d6l2}), which
 keeps the highest (\code{h}) or lowest (\code{l}) \code{K} dice (defaulting to \code{K = 1}).
-A per-die marker may follow the die size, before any keep selector or
-modifier: either an explode marker or a reroll marker, but not both (they
-are mutually exclusive within a term). The explode marker is \code{!} (rerolls
-a maximum-face die exactly once and sums the two faces; the extra die does
+In the same slot a drop selector \code{dl}/\code{dh}/\code{d} instead discards dice and
+sums the rest: \code{NdXdlK} drops the lowest \code{K}, \code{NdXdhK} drops the highest
+\code{K}, and the shorthand \code{NdXdK} drops the lowest \code{K}; a missing count drops
+one die. Drop is the inverse spelling of keep, so \code{NdXdlK} is \code{NdXh(N-K)}
+and \code{NdXdhK} is \code{NdXl(N-K)}; the conventional D&D roll \verb{4d6dl1} (drop the
+lowest of four d6) is \verb{4d6h3}. The drop count \code{K} must satisfy
+\verb{1 <= K <= N - 1} (drop at least one, leave at least one). A per-die marker
+may follow the die size, before any keep or drop selector or modifier:
+either an explode marker or a reroll marker, but not both (they are
+mutually exclusive within a term). The explode marker is \code{!} (rerolls a
+maximum-face die exactly once and sums the two faces; the extra die does
 not itself explode) or \verb{!!} (keeps rerolling while the maximum recurs,
 capped at 100 chained rerolls per die). So \verb{2d6!}, \verb{2d6!!}, \verb{4d6!h3}, and
 \verb{2d6!+1} are all valid. When a \verb{!!} die reaches the cap, \code{roll()} emits a
@@ -34,7 +41,7 @@ explode marker: reroll replaces the die's value, it does not sum. So
 \verb{2d6r1}, \verb{1d20rr1}, \verb{4d6r1h3}, and \verb{2d6r1+2} are all valid, and reroll
 never warns. Several such terms, plus bare integer constants, may be
 joined with \code{+} or \code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l},
-\verb{1d20+1d6+1d4+3}); at least one dice term is required and each keep
+\verb{1d20+1d6+1d4+3}); at least one dice term is required and each keep or drop
 selector applies within its own term only.
 
 A trailing success comparator turns the whole notation into a
@@ -44,10 +51,10 @@ of dice that satisfy the comparator, an integer in \verb{0..N}, not a summed
 total. A die succeeds when its face satisfies the comparator against \code{T},
 with per-die probability \code{p} equal to the fraction of \verb{1..X} faces that
 satisfy it, so the count is exactly Binomial(\code{N}, \code{p}). A success-counting
-notation is a single bare dice term with a comparator: it takes no keep
-selector, explode marker, reroll marker, or modifier, and does not join
-with other terms or constants. See \code{\link[=roll_distribution]{roll_distribution()}} to summarise many
-rolls.}
+notation is a single bare dice term with a comparator: it takes no keep or
+drop selector, explode marker, reroll marker, or modifier, and does not
+join with other terms or constants. See \code{\link[=roll_distribution]{roll_distribution()}} to summarise
+many rolls.}
 
 \item{compare}{A length-1 logical. When \code{TRUE}, printing the roll also
 shows where the total sits within the notation's full theoretical outcome

@@ -32,6 +32,16 @@
 #' `4d6h3`, `3d6l2`). A missing keep count defaults to `K = 1`. Keep selection
 #' applies within its own term only; there is no cross-term keep.
 #'
+#' In the same slot a drop selector discards dice instead of keeping them:
+#' `dl`/`dh` (case-insensitive) drops the lowest/highest `K` dice and the
+#' shorthand `d` drops the lowest, each with an optional count defaulting to
+#' dropping one (e.g. `4d6dl1`, `4d6dh1`, `4d6d1`). Drop is translated here into
+#' the equivalent keep selection, so `NdXdlK` becomes `keep = "h"`,
+#' `keep_n = N - K` and `NdXdhK` becomes `keep = "l"`, `keep_n = N - K`; the
+#' parsed record for a drop notation is identical to its keep equivalent and no
+#' new field is added. The drop count `K` must satisfy `1 <= K <= N - 1`. A
+#' term carries at most one selector; keep and drop are mutually exclusive.
+#'
 #' A bare signed integer is a constant term (for example the trailing `+3` in
 #' `1d20+1d6+1d4+3`). At least one dice term is required; a notation of only
 #' constants (a pure number like `"3"`) is rejected.
@@ -163,10 +173,19 @@ tokenise_terms <- function(trimmed, notation, call) {
   # least one threshold digit, so a bare `r`/`rr` (`2d6r`) fails to match here
   # and is likewise bad notation, and the `{1,2}` bound rejects `rrr` (`2d6rrr1`),
   # mirroring how `!{1,2}` rejects `!!!`.
+  # The selector slot accepts either a keep selector (`h`/`l` then the guard)
+  # or a drop selector (the drop marker `d`, an optional direction `h`/`l`,
+  # then the same guard). Both spellings share the countless guard, so a
+  # countless drop selector abutting a bare signed integer (`4d6dl-1`) stays
+  # unparseable while a `+`/`-` joiner introducing a new die (`4d6dl+2d6`) ends
+  # the token. A term never carries both selectors: the slot matches at most
+  # one alternative, so `4d6h3dl1` and `4d6dl1h2` leave residue and are
+  # rejected as invalid notation downstream.
   dice_body <- paste0(
     "(?:\\d*)[dD](?:\\d+)",
     "(?:!{1,2}|[rR]{1,2}\\d+)?",
-    "(?:[hHlL](?:\\d+|(?![+-])|(?=[+-]\\s*\\d*[dD])))?",
+    "(?:[hHlL](?:\\d+|(?![+-])|(?=[+-]\\s*\\d*[dD]))",
+    "|[dD](?:[hHlL])?(?:\\d+|(?![+-])|(?=[+-]\\s*\\d*[dD])))?",
     "(?:\\s*[+-]\\s*\\d+(?![0-9dD]))?"
   )
   # A constant-term body: bare digits (its sign is captured separately as the
@@ -256,7 +275,9 @@ parse_term <- function(token, notation, n_terms, call) {
     regexec(
       paste0(
         "^(\\d*)[dD](\\d+)((?:!{1,2})|(?:[rR]{1,2}\\d+))?",
-        "([hHlL](?:\\d+|(?![+-])))?\\s*([+-]\\s*\\d+)?$"
+        "((?:[hHlL](?:\\d+|(?![+-])))",
+        "|(?:[dD](?:[hHlL])?(?:\\d+|(?![+-]))))?",
+        "\\s*([+-]\\s*\\d+)?$"
       ),
       body,
       perl = TRUE
@@ -365,12 +386,65 @@ parse_term <- function(token, notation, n_terms, call) {
     )
   }
 
-  # Keep selector. Absent when the selector group is empty, in which case both
-  # callers sum every die of the term. When present, the direction is the
-  # leading letter and the remaining digits are the keep count (defaulting
-  # to 1).
+  # Selector slot. Absent when the group is empty, in which case both callers
+  # sum every die of the term. When present it is either a keep selector
+  # (leading `h`/`l`) or a drop selector (leading drop marker `d`). A drop
+  # selector is translated here into the equivalent keep fields, so the parsed
+  # record for a drop notation is byte-identical to its keep equivalent and no
+  # downstream code sees the drop spelling (it survives only in `notation`).
   if (nzchar(selector_str)) {
-    keep <- tolower(substr(selector_str, 1L, 1L))
+    selector <- parse_selector(
+      selector_str,
+      n,
+      term_text,
+      notation,
+      n_terms,
+      call
+    )
+    keep <- selector$keep
+    keep_n <- selector$keep_n
+  } else {
+    keep <- NA_character_
+    keep_n <- NA_integer_
+  }
+
+  list(
+    kind = "dice",
+    sign = sign,
+    n = n,
+    x = x,
+    m = m,
+    keep = keep,
+    keep_n = keep_n,
+    explode = explode,
+    reroll = reroll,
+    reroll_t = reroll_t
+  )
+}
+
+# Resolve the selector slot of a dice term into the `keep`/`keep_n` fields.
+# `selector_str` is the raw selector text the capture regex extracted (never
+# empty when this is called), `n` the number of dice in the term. The first
+# character tells the two spellings apart: `h`/`l` is a keep selector (its
+# meaning and error wording unchanged), `d` is a drop selector, translated into
+# the equivalent keep selection so downstream code never sees the drop
+# spelling. Returns `list(keep, keep_n)`. Aborts against `call` on an
+# out-of-bounds count, so the error origin stays `parse_notation()`.
+parse_selector <- function(
+  selector_str,
+  n,
+  term_text,
+  notation,
+  n_terms,
+  call
+) {
+  lead <- tolower(substr(selector_str, 1L, 1L))
+
+  if (lead != "d") {
+    # Keep selector: direction is the leading letter, the remaining digits are
+    # the keep count (defaulting to 1). Behaviour and error wording are
+    # unchanged from before the drop spelling was added.
+    keep <- lead
     count_part <- substr(selector_str, 2L, nchar(selector_str))
     keep_n <- if (nzchar(count_part)) as.integer(count_part) else 1L
 
@@ -405,23 +479,64 @@ parse_term <- function(token, notation, n_terms, call) {
         call = call
       )
     }
-  } else {
-    keep <- NA_character_
-    keep_n <- NA_integer_
+
+    return(list(keep = keep, keep_n = keep_n))
   }
 
-  list(
-    kind = "dice",
-    sign = sign,
-    n = n,
-    x = x,
-    m = m,
-    keep = keep,
-    keep_n = keep_n,
-    explode = explode,
-    reroll = reroll,
-    reroll_t = reroll_t
-  )
+  # Drop selector. Strip the leading drop marker `d`; the next character, if a
+  # direction letter, is the drop direction, else the direction defaults to
+  # lowest (the shorthand `NdXdK` and the count-omitted `NdXd` both drop the
+  # lowest). The remaining digits are the drop count `K`, defaulting to 1.
+  rest <- substr(selector_str, 2L, nchar(selector_str))
+  direction <- "l"
+  if (nzchar(rest) && tolower(substr(rest, 1L, 1L)) %in% c("h", "l")) {
+    direction <- tolower(substr(rest, 1L, 1L))
+    rest <- substr(rest, 2L, nchar(rest))
+  }
+  drop_n <- if (nzchar(rest)) as.integer(rest) else 1L
+
+  # Validate on the drop count `K`, not on the derived `keep_n`: the drop bound
+  # `1 <= K <= n - 1` (drop at least one, leave at least one) is not identical
+  # to the keep bound after translation. `K = 0` derives `keep_n = n`, a valid
+  # keep count the keep check would not catch, so it must be rejected here. The
+  # `K >= n` end derives `keep_n <= 0` (drop all), which mirrors the keep-zero
+  # rejection; both are phrased in drop terms and carry `rollr2_error_bad_keep`.
+  if (drop_n < 1L) {
+    abort(
+      c(
+        "Drop count must be at least 1.",
+        i = paste0(
+          "Received drop count 0",
+          in_clause(term_text, notation, n_terms)
+        )
+      ),
+      class = c("rollr2_error_bad_keep", "rollr2_error"),
+      call = call
+    )
+  }
+
+  if (drop_n > n - 1L) {
+    abort(
+      c(
+        "Drop count cannot leave fewer than one die.",
+        i = paste0(
+          "Received drop count ",
+          drop_n,
+          " for ",
+          n,
+          " dice",
+          in_clause(term_text, notation, n_terms)
+        )
+      ),
+      class = c("rollr2_error_bad_keep", "rollr2_error"),
+      call = call
+    )
+  }
+
+  # Drop is the inverse of keep: dropping the lowest `K` keeps the highest
+  # `n - K`; dropping the highest `K` keeps the lowest `n - K`.
+  keep <- if (direction == "l") "h" else "l"
+  list(keep = keep, keep_n = n - drop_n)
 }
 
 # Parse a whole-notation success-counting pool: a single bare dice term (`NdX`

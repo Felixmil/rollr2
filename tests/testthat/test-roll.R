@@ -78,6 +78,32 @@ test_that("selector rolls are reproducible under a fixed seed", {
   expect_equal(first$total, second$total)
 })
 
+test_that("a drop notation rolls identically to its keep equivalent (AC-4)", {
+  drop <- withr::with_seed(42, roll("4d6dl1"))
+  keep <- withr::with_seed(42, roll("4d6h3"))
+  expect_equal(drop$dice, keep$dice)
+  expect_equal(drop$kept, keep$kept)
+  expect_equal(drop$total, keep$total)
+})
+
+test_that("a drop notation composed with explode matches its keep equivalent (AC-4)", {
+  drop <- withr::with_seed(42, roll("4d6!dl1"))
+  keep <- withr::with_seed(42, roll("4d6!h3"))
+  expect_equal(drop$dice, keep$dice)
+  expect_equal(drop$kept, keep$kept)
+  expect_equal(drop$total, keep$total)
+})
+
+test_that("print.roll on a drop notation shows the kept dice and echoes the drop spelling (AC-4)", {
+  withr::local_seed(42)
+  expect_snapshot(print(roll("4d6dl1")))
+})
+
+test_that("compare on a drop notation matches the keep shape while echoing the drop spelling (AC-5)", {
+  withr::local_seed(42)
+  expect_snapshot(print(roll("4d6dl1", compare = TRUE)))
+})
+
 test_that("print.roll renders notation, dice, and total", {
   withr::local_seed(42)
   expect_snapshot(print(roll("2d20+2")))
