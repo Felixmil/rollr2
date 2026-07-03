@@ -301,6 +301,82 @@ test_that("an explode-indefinitely die hitting the cap warns and still returns a
   expect_equal(result$total, 606L)
 })
 
+# Reroll dice ----
+
+test_that("reroll-once replaces a qualifying die's value rather than summing it (AC-3)", {
+  # Seed 1 rolls a 1 then a 4 on 1d6, so `1d6r1` rerolls the qualifying 1 once,
+  # lists both physical faces in draw order, and takes the replacement (4) as
+  # the value, not the sum (contrast explode-once, which sums).
+  withr::local_seed(1)
+  rerolled <- roll("1d6r1")
+
+  expect_equal(rerolled$dice, c(1L, 4L))
+  expect_equal(rerolled$total, 4L)
+})
+
+test_that("reroll-once keeps a non-qualifying first face with no reroll (AC-3)", {
+  # Seed 2 rolls a face > 1 on 1d6, so `1d6r1` keeps it, drawing no
+  # replacement: a single physical face, and the total is that face.
+  withr::local_seed(2)
+  kept_first <- roll("1d6r1")
+
+  expect_length(kept_first$dice, 1L)
+  expect_gt(kept_first$dice[1], 1L)
+  expect_equal(kept_first$total, kept_first$dice[1])
+})
+
+test_that("reroll-until leaves a die strictly above the threshold (AC-3)", {
+  # `1d20rr1` rerolls a 1 until the result is > 1, so the final (last) physical
+  # face and the total are never 1, whatever the seed.
+  for (s in seq_len(50L)) {
+    result <- withr::with_seed(s, roll("1d20rr1"))
+    expect_gt(result$dice[length(result$dice)], 1L)
+    expect_gt(result$total, 1L)
+  }
+})
+
+test_that("reroll composes with a keep selector on the per-die values (AC-3)", {
+  # `4d6r1h3`: reroll each of the four dice, then keep the three highest per-die
+  # values and sum them.
+  withr::local_seed(42)
+  result <- roll("4d6r1h3")
+
+  per_die_kept <- result$terms[[1]]$kept
+  expect_length(per_die_kept, 3L)
+  expect_equal(result$total, sum(per_die_kept))
+  expect_equal(sort(per_die_kept, decreasing = TRUE), per_die_kept)
+})
+
+test_that("print.roll echoes the reroll spelling and shows its dice (AC-3)", {
+  withr::local_seed(42)
+  expect_snapshot(print(roll("2d6r1")))
+  expect_snapshot(print(roll("1d20rr1")))
+})
+
+test_that("print.roll shows the kept per-die values for a reroll keep-selector term (AC-3)", {
+  withr::local_seed(42)
+  expect_snapshot(print(roll("4d6r1h3")))
+})
+
+test_that("reroll never warns (AC-7)", {
+  withr::local_seed(42)
+  expect_no_warning(roll("2d6r1"))
+  expect_no_warning(roll("1d20rr1"))
+})
+
+test_that("compare prints a reroll histogram over the theoretical range with the marked total (AC-5)", {
+  # 2d6r1 spans the plain 2..12 range; the standing is computed, not sampled.
+  # Force a mid-range total (9) directly so the marked bar sits inside the
+  # histogram and the case is deterministic.
+  withr::local_seed(42)
+  r <- roll("2d6r1", compare = TRUE)
+  r$terms[[1]]$dice <- c(6L, 3L)
+  r$terms[[1]]$kept <- c(6L, 3L)
+  r$terms[[1]]$subtotal <- 9L
+  r$total <- 9L
+  expect_snapshot(print(r))
+})
+
 test_that("a multi-term roll totals every term's contribution (AC-2)", {
   withr::local_seed(42)
   result <- roll("1d20+1d6+1d4+3")

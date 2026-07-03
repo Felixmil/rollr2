@@ -53,6 +53,19 @@ roll("4d6h3")
 #> Total: 7
 ```
 
+A reroll marker like `2d6r2` rerolls once any die showing a value at or
+below the threshold (here 2), keeping the new value; `rr` instead
+rerolls until the die lands above the threshold. This is the D&D 5e
+Great Weapon Fighting style reroll.
+
+``` r
+set.seed(42)
+roll("2d6r2")
+#> <roll> 2d6r2
+#> Dice:  1, 5, 1, 1
+#> Total: 6
+```
+
 A notation can also sum several terms and constants, joined with `+` or
 `-`.
 

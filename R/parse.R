@@ -8,14 +8,25 @@
 #' (case-insensitive `d`, whitespace-tolerant). A missing leading count
 #' defaults to `N = 1` and a missing modifier to `M = 0`.
 #'
-#' An optional explode marker may follow the die size, before any keep
-#' selector or modifier: `!` (explode once) or `!!` (explode indefinitely).
-#' Under `!` a die that shows its maximum face is rerolled once and the two
-#' faces are summed; the extra die does not itself explode. Under `!!` the die
-#' keeps rerolling while the maximum recurs, capped at a fixed 100 chained
-#' rerolls per die. So `2d6!`, `2d6!!`, `4d6!h3`, and `2d6!+1` are all valid.
+#' An optional per-die marker may follow the die size, before any keep
+#' selector or modifier: either an explode marker or a reroll marker, but not
+#' both (they are mutually exclusive within a term). The explode marker is `!`
+#' (explode once) or `!!` (explode indefinitely). Under `!` a die that shows
+#' its maximum face is rerolled once and the two faces are summed; the extra
+#' die does not itself explode. Under `!!` the die keeps rerolling while the
+#' maximum recurs, capped at a fixed 100 chained rerolls per die. So `2d6!`,
+#' `2d6!!`, `4d6!h3`, and `2d6!+1` are all valid.
 #'
-#' An optional keep selector may follow the explode marker, before the
+#' The reroll marker is `rT` (reroll once) or `rrT` (reroll until above),
+#' where `T` is a required integer threshold bounded `1 <= T <= X - 1`. Under
+#' `rT` any die showing a value `<= T` is rerolled exactly once and the new
+#' value is kept unconditionally (even if it is also `<= T`). Under `rrT` a
+#' die showing `<= T` is rerolled repeatedly until it lands strictly above
+#' `T`. The `r` marker letter is case-insensitive. So `2d6r1`, `1d20rr1`,
+#' `4d6r1h3`, and `2d6r1+2` are all valid; a term carrying both a reroll and
+#' an explode marker (for example `2d6!r1`) is not.
+#'
+#' An optional keep selector may follow the per-die marker, before the
 #' modifier: `h`/`l` (case-insensitive) requests keeping only the
 #' highest/lowest dice, optionally followed by a keep count `K` (e.g. `2d20h`,
 #' `4d6h3`, `3d6l2`). A missing keep count defaults to `K = 1`. Keep selection
@@ -30,17 +41,21 @@
 #'
 #' @return A list with a single element `terms`, an ordered list of term
 #'   records in the order they appear in the notation. A dice term is
-#'   `list(kind = "dice", sign, n, x, m, keep, keep_n, explode)` where `sign`
-#'   is the term's leading sign folded to `+1L`/`-1L`, `n`/`x` are integer die
-#'   count and size, `m` the integer within-term modifier, `keep` the selector
-#'   direction (`"h"`, `"l"`, or `NA_character_`), `keep_n` the integer keep
-#'   count (or `NA_integer_`), and `explode` the explode mode (`"none"`,
-#'   `"once"`, or `"indef"`). A constant term is `list(kind = "const", value)`
-#'   where `value` is the signed integer contribution. A success-counting term
-#'   (a whole-notation single dice term with a trailing comparator) carries two
-#'   further fields after `explode`: `compare_op` (the comparator `">="`, `">"`,
-#'   `"<="`, or `"<"`) and `compare_target` (the integer target `T`); a
-#'   summed-total term omits both.
+#'   `list(kind = "dice", sign, n, x, m, keep, keep_n, explode, reroll,
+#'   reroll_t)` where `sign` is the term's leading sign folded to
+#'   `+1L`/`-1L`, `n`/`x` are integer die count and size, `m` the integer
+#'   within-term modifier, `keep` the selector direction (`"h"`, `"l"`, or
+#'   `NA_character_`), `keep_n` the integer keep count (or `NA_integer_`),
+#'   `explode` the explode mode (`"none"`, `"once"`, or `"indef"`), `reroll`
+#'   the reroll mode (`"none"`, `"once"` for `rT`, or `"until"` for `rrT`),
+#'   and `reroll_t` the integer reroll threshold `T` (or `NA_integer_` when
+#'   `reroll` is `"none"`). Explode and reroll are mutually exclusive, so at
+#'   most one of `explode` and `reroll` is not `"none"`. A constant term is
+#'   `list(kind = "const", value)` where `value` is the signed integer
+#'   contribution. A success-counting term (a whole-notation single dice term
+#'   with a trailing comparator) carries two further fields after `reroll_t`:
+#'   `compare_op` (the comparator `">="`, `">"`, `"<="`, or `"<"`) and
+#'   `compare_target` (the integer target `T`); a summed-total term omits both.
 #'
 #' @keywords internal
 #' @noRd
@@ -139,9 +154,18 @@ tokenise_terms <- function(trimmed, notation, call) {
   # integer (`2d6h-1`, `2d6h+1` stay unparseable, as before) while allowing a
   # `+`/`-` joiner that introduces a new dice term (`2d20h+2d20l`, `2d20h-1d6`)
   # to end the token so the next term is scanned separately.
+  # The post-die-size slot accepts at most one per-die marker: either the
+  # explode marker (`!`/`!!`) or the reroll marker (`rT`/`rrT`), never both.
+  # Because the two markers are alternatives in a single optional group, a term
+  # carrying both (`2d6!r1`, `2d6r1!`) matches only the first marker and leaves
+  # the second as unconsumed residue, which the whole-string residue check
+  # rejects as bad notation. The reroll sub-pattern `[rR]{1,2}\\d+` requires at
+  # least one threshold digit, so a bare `r`/`rr` (`2d6r`) fails to match here
+  # and is likewise bad notation, and the `{1,2}` bound rejects `rrr` (`2d6rrr1`),
+  # mirroring how `!{1,2}` rejects `!!!`.
   dice_body <- paste0(
     "(?:\\d*)[dD](?:\\d+)",
-    "(?:!{1,2})?",
+    "(?:!{1,2}|[rR]{1,2}\\d+)?",
     "(?:[hHlL](?:\\d+|(?![+-])|(?=[+-]\\s*\\d*[dD])))?",
     "(?:\\s*[+-]\\s*\\d+(?![0-9dD]))?"
   )
@@ -223,10 +247,17 @@ parse_term <- function(token, notation, n_terms, call) {
     return(list(kind = "const", value = sign * as.integer(body)))
   }
 
+  # The per-die marker (capture group 4) is a single alternation of the explode
+  # and reroll forms, so a term carries at most one; the keep selector and
+  # modifier keep their group indices (5 and 6). The reroll form requires a
+  # threshold digit, so a bare `r`/`rr` never matches here.
   match <- regmatches(
     body,
     regexec(
-      "^(\\d*)[dD](\\d+)(!{1,2})?([hHlL](?:\\d+|(?![+-])))?\\s*([+-]\\s*\\d+)?$",
+      paste0(
+        "^(\\d*)[dD](\\d+)((?:!{1,2})|(?:[rR]{1,2}\\d+))?",
+        "([hHlL](?:\\d+|(?![+-])))?\\s*([+-]\\s*\\d+)?$"
+      ),
       body,
       perl = TRUE
     )
@@ -248,16 +279,25 @@ parse_term <- function(token, notation, n_terms, call) {
   selector_str <- match[[5]]
   modifier_str <- match[[6]]
 
-  # Explode marker: `!` explodes each maximum-face die once, `!!` explodes
-  # indefinitely (capped). Absent when the marker group is empty. Three
-  # distinguishable states with a "no explode" default so marker-free records
-  # only gain the appended `explode = "none"` field.
-  explode <- if (!nzchar(marker_str)) {
-    "none"
-  } else if (marker_str == "!") {
-    "once"
-  } else {
-    "indef"
+  # Per-die marker (capture group 4): either an explode marker (`!`/`!!`) or a
+  # reroll marker (`rT`/`rrT`), never both, so exactly one of `explode` and
+  # `reroll` can leave its "none" default. A marker-free record only gains the
+  # appended `explode = "none"`, `reroll = "none"`, `reroll_t = NA_integer_`
+  # defaults.
+  explode <- "none"
+  reroll <- "none"
+  reroll_t <- NA_integer_
+  if (nzchar(marker_str)) {
+    if (startsWith(marker_str, "!")) {
+      explode <- if (marker_str == "!") "once" else "indef"
+    } else {
+      # Reroll marker: the leading `r`/`rr` run is the mode, the trailing digits
+      # the threshold. The threshold is validated (`1 <= T <= X - 1`) below,
+      # after the die-size check so `x` is known.
+      letters_part <- tolower(sub("[0-9]+$", "", marker_str))
+      reroll <- if (letters_part == "r") "once" else "until"
+      reroll_t <- as.integer(sub("^[rR]+", "", marker_str))
+    }
   }
 
   n <- if (nzchar(count_str)) as.integer(count_str) else 1L
@@ -298,6 +338,29 @@ parse_term <- function(token, notation, n_terms, call) {
         )
       ),
       class = c("rollr2_error_bad_die_size", "rollr2_error"),
+      call = call
+    )
+  }
+
+  # Reroll threshold must be `1 <= T <= X - 1` (checked after the die-size
+  # check so `x` is known, and before the keep-count check). A threshold of 0
+  # or less never fires; a threshold at or above the die size would reroll
+  # every face (and never terminate under `rr`). A bare `r`/`rr` with no digit
+  # never reaches here (it fails the term regex as bad notation).
+  if (reroll != "none" && (reroll_t < 1L || reroll_t > x - 1L)) {
+    abort(
+      c(
+        "Reroll threshold must be between 1 and the die size minus 1.",
+        i = paste0(
+          "Received threshold ",
+          reroll_t,
+          " for a ",
+          x,
+          "-sided die",
+          in_clause(term_text, notation, n_terms)
+        )
+      ),
+      class = c("rollr2_error_bad_reroll", "rollr2_error"),
       call = call
     )
   }
@@ -355,7 +418,9 @@ parse_term <- function(token, notation, n_terms, call) {
     m = m,
     keep = keep,
     keep_n = keep_n,
-    explode = explode
+    explode = explode,
+    reroll = reroll,
+    reroll_t = reroll_t
   )
 }
 

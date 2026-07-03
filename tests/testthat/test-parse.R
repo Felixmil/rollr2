@@ -89,6 +89,71 @@ test_that("a malformed selector after a valid marker is rejected as its non-expl
   expect_snapshot(error = TRUE, parse_notation("2d6!h1.5"))
 })
 
+# Reroll marker ----
+
+test_that("parse_notation reads the reroll-once and reroll-until markers (AC-1)", {
+  expect_snapshot(parse_notation("2d6r1"))
+  expect_snapshot(parse_notation("1d20rr1"))
+  expect_snapshot(parse_notation("d20r1"))
+  expect_snapshot(parse_notation("d20rr1"))
+})
+
+test_that("the reroll marker letter is case-insensitive (AC-1)", {
+  expect_snapshot(parse_notation("2D6R1"))
+  expect_snapshot(parse_notation("1d20RR1"))
+})
+
+test_that("the reroll marker composes with a keep selector and a modifier (AC-1)", {
+  expect_snapshot(parse_notation("4d6r1h3"))
+  expect_snapshot(parse_notation("4d6rr1l2"))
+  expect_snapshot(parse_notation("2d6r1+2"))
+  expect_snapshot(parse_notation("2d6rr1-1"))
+  expect_snapshot(parse_notation("4d6r1h3+2"))
+})
+
+test_that("the reroll marker parses inside a multi-term notation (AC-1)", {
+  expect_snapshot(parse_notation("1d20+2d6r1"))
+  expect_snapshot(parse_notation("2d6rr1+1d4"))
+  expect_snapshot(parse_notation("2d6r1-1d4"))
+})
+
+test_that("a missing reroll threshold is rejected as invalid notation (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6r"))
+  expect_snapshot(error = TRUE, parse_notation("2d6rr"))
+})
+
+test_that("a malformed reroll marker is rejected as invalid notation (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6rrr1"))
+  expect_snapshot(error = TRUE, parse_notation("2d6r1.5"))
+})
+
+test_that("an out-of-range reroll threshold names the threshold and die size (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6r0"))
+  expect_snapshot(error = TRUE, parse_notation("2d6r6"))
+  expect_snapshot(error = TRUE, parse_notation("2d6rr6"))
+  expect_snapshot(error = TRUE, parse_notation("1d20rr20"))
+  # A multi-term case exercises the ` in term "..." of "..."` phrasing.
+  expect_snapshot(error = TRUE, parse_notation("2d6r6+1d4"))
+})
+
+test_that("a term carrying both a reroll and an explode marker is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6!r1"))
+  expect_snapshot(error = TRUE, parse_notation("2d6r1!"))
+  expect_snapshot(error = TRUE, parse_notation("2d6rr1!!"))
+  expect_snapshot(error = TRUE, parse_notation("2d6!!rr1"))
+})
+
+test_that("a reroll marker after the selector or modifier is rejected (AC-2)", {
+  expect_snapshot(error = TRUE, parse_notation("2d6h1r1"))
+  expect_snapshot(error = TRUE, parse_notation("2d6+1r1"))
+})
+
+test_that("a valid threshold reports the keep-count error, not the reroll error (AC-2)", {
+  # 4d6r1h5 has a valid threshold (1 <= 1 <= 5) but an invalid keep count
+  # (5 > 4), so the keep-count check fires; the reroll check does not.
+  expect_snapshot(error = TRUE, parse_notation("4d6r1h5"))
+})
+
 test_that("explicit zero modifier equals no modifier", {
   expect_equal(parse_notation("2d6+0"), parse_notation("2d6"))
 })

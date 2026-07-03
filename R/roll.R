@@ -13,16 +13,24 @@
 #'   `d`, whitespace-tolerant), optionally with a keep selector `h`/`l` and an
 #'   optional count after the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`), which
 #'   keeps the highest (`h`) or lowest (`l`) `K` dice (defaulting to `K = 1`).
-#'   An explode marker may follow the die size, before any keep selector or
-#'   modifier: `!` rerolls a maximum-face die exactly once and sums the two
-#'   faces (the extra die does not itself explode), while `!!` keeps rerolling
-#'   while the maximum recurs, capped at 100 chained rerolls per die. So `2d6!`,
-#'   `2d6!!`, `4d6!h3`, and `2d6!+1` are all valid. When a `!!` die reaches the
-#'   cap, `roll()` emits a warning while still returning a valid roll.
-#'   Several such terms, plus bare integer constants, may be joined with `+` or
-#'   `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`, `1d20+1d6+1d4+3`);
-#'   at least one dice term is required and each keep selector applies within
-#'   its own term only.
+#'   A per-die marker may follow the die size, before any keep selector or
+#'   modifier: either an explode marker or a reroll marker, but not both (they
+#'   are mutually exclusive within a term). The explode marker is `!` (rerolls
+#'   a maximum-face die exactly once and sums the two faces; the extra die does
+#'   not itself explode) or `!!` (keeps rerolling while the maximum recurs,
+#'   capped at 100 chained rerolls per die). So `2d6!`, `2d6!!`, `4d6!h3`, and
+#'   `2d6!+1` are all valid. When a `!!` die reaches the cap, `roll()` emits a
+#'   warning while still returning a valid roll. The reroll marker is `rT`
+#'   (rerolls any die showing `<= T` exactly once and keeps the new value
+#'   unconditionally, even if it is also `<= T`) or `rrT` (rerolls a die
+#'   showing `<= T` repeatedly until it lands strictly above `T`), where the
+#'   threshold `T` is required and bounded `1 <= T <= X - 1`. Contrast the
+#'   explode marker: reroll replaces the die's value, it does not sum. So
+#'   `2d6r1`, `1d20rr1`, `4d6r1h3`, and `2d6r1+2` are all valid, and reroll
+#'   never warns. Several such terms, plus bare integer constants, may be
+#'   joined with `+` or `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`,
+#'   `1d20+1d6+1d4+3`); at least one dice term is required and each keep
+#'   selector applies within its own term only.
 #'
 #'   A trailing success comparator turns the whole notation into a
 #'   success-counting pool: `NdX>=T`, `NdX>T`, `NdX<=T`, or `NdX<T` against an
@@ -32,8 +40,9 @@
 #'   with per-die probability `p` equal to the fraction of `1..X` faces that
 #'   satisfy it, so the count is exactly Binomial(`N`, `p`). A success-counting
 #'   notation is a single bare dice term with a comparator: it takes no keep
-#'   selector, explode marker, or modifier, and does not join with other terms
-#'   or constants. See [roll_distribution()] to summarise many rolls.
+#'   selector, explode marker, reroll marker, or modifier, and does not join
+#'   with other terms or constants. See [roll_distribution()] to summarise many
+#'   rolls.
 #' @param compare A length-1 logical. When `TRUE`, printing the roll also
 #'   shows where the total sits within the notation's full theoretical outcome
 #'   distribution: a header line stating what percent of outcomes the roll
@@ -50,15 +59,16 @@
 #'   with the term's parsed fields plus its `dice`, `kept`, and `subtotal`),
 #'   the original `notation`, and `compare` (the logical flag controlling the
 #'   print method). For a single-term notation the parsed components `n`, `x`,
-#'   `m`, `keep`, `keep_n`, `explode` are also present at the top level; they
-#'   are omitted for a multi-term notation, where per-term access via `terms`
-#'   is required. For an exploding term `dice` still lists every physical die
-#'   including rerolls in draw order, and `kept` lists the kept per-die totals.
-#'   For a success-counting notation the outcome is a success count, not a
-#'   summed total: `total` (also `successes`) is the number of dice that satisfy
-#'   the comparator (`0..N`), `successful` is the subset of `dice` that satisfy
-#'   it, and `success` is `TRUE`; a summed-total roll carries none of these
-#'   success fields.
+#'   `m`, `keep`, `keep_n`, `explode`, `reroll`, `reroll_t` are also present at
+#'   the top level; they are omitted for a multi-term notation, where per-term
+#'   access via `terms` is required. For an exploding or reroll term `dice`
+#'   still lists every physical die including rerolls in draw order (for a
+#'   reroll term, the rerolled-away faces are listed too), and `kept` lists the
+#'   kept per-die values. For a success-counting notation the outcome is a
+#'   success count, not a summed total: `total` (also `successes`) is the number
+#'   of dice that satisfy the comparator (`0..N`), `successful` is the subset of
+#'   `dice` that satisfy it, and `success` is `TRUE`; a summed-total roll
+#'   carries none of these success fields.
 #'
 #' @examples
 #' set.seed(1)
@@ -145,6 +155,8 @@ roll <- function(notation, compare = FALSE) {
     obj$keep <- sole$keep
     obj$keep_n <- sole$keep_n
     obj$explode <- sole$explode
+    obj$reroll <- sole$reroll
+    obj$reroll_t <- sole$reroll_t
   }
 
   # Mark a success-counting roll and expose its detail so the print/plot methods
@@ -302,10 +314,12 @@ explode_cap <- 100L
 # Roll one parsed term into a per-term record carrying its `dice`, `kept`,
 # signed `subtotal`, and a `capped` flag, alongside the parsed fields. A
 # constant term draws no dice (empty `dice`/`kept`) and contributes its
-# `value`. A dice term draws `n` faces (per-die exploded when a marker is
-# present), applies its keep selector value-based (no tie-break) to the per-die
-# totals, and contributes `sign * (sum(kept) + m)`. `capped` is TRUE only when
-# some `!!` die in the term hit the reroll cap.
+# `value`. A dice term draws `n` faces (per-die exploded when the explode
+# marker is present, or per-die rerolled when the reroll marker is present),
+# applies its keep selector value-based (no tie-break) to the per-die totals,
+# and contributes `sign * (sum(kept) + m)`. Explode and reroll are mutually
+# exclusive, so at most one per-die branch applies. `capped` is TRUE only when
+# some `!!` die in the term hit the reroll cap; reroll never caps.
 roll_term <- function(term) {
   if (term$kind == "const") {
     return(list(
@@ -347,12 +361,7 @@ roll_term <- function(term) {
   }
 
   capped <- FALSE
-  if (term$explode == "none") {
-    # Marker-free: draw the whole term in one batched call so the RNG stream is
-    # byte-identical to the pre-explode behaviour (no per-die routing).
-    dice <- sample.int(term$x, size = term$n, replace = TRUE)
-    per_die_totals <- dice
-  } else {
+  if (term$explode != "none") {
     # Exploding: draw each die independently, left to right, initial then
     # rerolls. `dice` concatenates every physical face in draw order; the
     # per-die totals feed the keep selector.
@@ -362,6 +371,21 @@ roll_term <- function(term) {
     dice <- unlist(lapply(per_die, \(d) d$faces), use.names = FALSE)
     per_die_totals <- vapply(per_die, \(d) d$total, integer(1L))
     capped <- any(vapply(per_die, \(d) d$capped, logical(1L)))
+  } else if (term$reroll != "none") {
+    # Rerolling: draw each die independently, left to right, applying the
+    # reroll rule per die. `dice` concatenates every physical face in draw
+    # order (including rerolled-away faces); the per-die values feed the keep
+    # selector.
+    per_die <- lapply(seq_len(term$n), function(i) {
+      reroll_die(term$x, term$reroll, term$reroll_t)
+    })
+    dice <- unlist(lapply(per_die, \(d) d$faces), use.names = FALSE)
+    per_die_totals <- vapply(per_die, \(d) d$total, integer(1L))
+  } else {
+    # Marker-free: draw the whole term in one batched call so the RNG stream is
+    # byte-identical to the pre-marker behaviour (no per-die routing).
+    dice <- sample.int(term$x, size = term$n, replace = TRUE)
+    per_die_totals <- dice
   }
 
   if (!is.na(term$keep)) {
@@ -382,6 +406,8 @@ roll_term <- function(term) {
     keep = term$keep,
     keep_n = term$keep_n,
     explode = term$explode,
+    reroll = term$reroll,
+    reroll_t = term$reroll_t,
     dice = dice,
     kept = kept,
     subtotal = subtotal,
@@ -429,6 +455,44 @@ explode_die <- function(x, explode) {
     }
   }
   list(faces = faces, total = sum(faces), capped = capped)
+}
+
+# Draw one logical die of size `x` under reroll mode `reroll` ("once" for `rT`,
+# "until" for `rrT`) at threshold `t`. Returns the same shape as
+# `explode_die()`: `faces` (the physical faces drawn in draw order, including
+# any rerolled-away face), `total` (the die's contributing value), and `capped`
+# (always FALSE; reroll never caps). Unlike explode, reroll *replaces* the
+# die's value rather than summing: the total is the surviving face, not the sum
+# of the physical faces.
+#
+# `"once"`: draw a face; if it is `<= t`, draw one replacement and keep that
+# replacement unconditionally (even if it too is `<= t`), otherwise keep the
+# first face. At most two physical faces.
+#
+# `"until"`: draw faces while the last is `<= t`; the value is the first face
+# strictly greater than `t`. The chain terminates almost surely because
+# `1 <= t <= x - 1` guarantees face `x > t` is always reachable, so no cap is
+# needed.
+reroll_die <- function(x, reroll, t) {
+  first <- sample.int(x, size = 1L)
+
+  if (reroll == "once") {
+    if (first <= t) {
+      second <- sample.int(x, size = 1L)
+      return(list(faces = c(first, second), total = second, capped = FALSE))
+    }
+    return(list(faces = first, total = first, capped = FALSE))
+  }
+
+  # reroll == "until": keep drawing while the latest face is `<= t`.
+  faces <- first
+  repeat {
+    if (faces[length(faces)] > t) {
+      break
+    }
+    faces <- c(faces, sample.int(x, size = 1L))
+  }
+  list(faces = faces, total = faces[length(faces)], capped = FALSE)
 }
 
 # Reject a comparison flag that is not a single non-missing logical. Returns
