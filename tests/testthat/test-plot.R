@@ -85,6 +85,25 @@ test_that("plot.roll handles a keep selector", {
   expect_equal(range(ggplot2::layer_data(p)$x), c(3, 18))
 })
 
+test_that("plot.roll on a drop notation matches the keep range and shows the drop title (AC-6)", {
+  r <- withr::with_seed(42, roll("4d6dl1"))
+  p <- plot(r)
+
+  expect_s3_class(p, "ggplot")
+  # 4d6dl1 is 4d6h3, ranging from 3 to 18; only the title string differs.
+  expect_equal(range(ggplot2::layer_data(p)$x), c(3, 18))
+  expect_equal(p$labels$title, "Outcome distribution for 4d6dl1")
+})
+
+test_that("plot.roll_distribution on a drop notation matches the keep range and shows the drop title (AC-6)", {
+  d <- withr::with_seed(42, roll_distribution("4d6dl1", n = 1000))
+  p <- plot(d)
+
+  expect_s3_class(p, "ggplot")
+  expect_equal(range(ggplot2::layer_data(p)$x), c(3, 18))
+  expect_equal(p$labels$title, "Distribution of totals for 4d6dl1")
+})
+
 test_that("plot.roll handles a negative, shifted range", {
   # 1d4-10 ranges from -9 to -6 (EC-3).
   r <- withr::with_seed(42, roll("1d4-10"))

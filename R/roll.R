@@ -13,10 +13,17 @@
 #'   `d`, whitespace-tolerant), optionally with a keep selector `h`/`l` and an
 #'   optional count after the die size (e.g. `2d20h`, `4d6h3`, `3d6l2`), which
 #'   keeps the highest (`h`) or lowest (`l`) `K` dice (defaulting to `K = 1`).
-#'   A per-die marker may follow the die size, before any keep selector or
-#'   modifier: either an explode marker or a reroll marker, but not both (they
-#'   are mutually exclusive within a term). The explode marker is `!` (rerolls
-#'   a maximum-face die exactly once and sums the two faces; the extra die does
+#'   In the same slot a drop selector `dl`/`dh`/`d` instead discards dice and
+#'   sums the rest: `NdXdlK` drops the lowest `K`, `NdXdhK` drops the highest
+#'   `K`, and the shorthand `NdXdK` drops the lowest `K`; a missing count drops
+#'   one die. Drop is the inverse spelling of keep, so `NdXdlK` is `NdXh(N-K)`
+#'   and `NdXdhK` is `NdXl(N-K)`; the conventional D&D roll `4d6dl1` (drop the
+#'   lowest of four d6) is `4d6h3`. The drop count `K` must satisfy
+#'   `1 <= K <= N - 1` (drop at least one, leave at least one). A per-die marker
+#'   may follow the die size, before any keep or drop selector or modifier:
+#'   either an explode marker or a reroll marker, but not both (they are
+#'   mutually exclusive within a term). The explode marker is `!` (rerolls a
+#'   maximum-face die exactly once and sums the two faces; the extra die does
 #'   not itself explode) or `!!` (keeps rerolling while the maximum recurs,
 #'   capped at 100 chained rerolls per die). So `2d6!`, `2d6!!`, `4d6!h3`, and
 #'   `2d6!+1` are all valid. When a `!!` die reaches the cap, `roll()` emits a
@@ -29,7 +36,7 @@
 #'   `2d6r1`, `1d20rr1`, `4d6r1h3`, and `2d6r1+2` are all valid, and reroll
 #'   never warns. Several such terms, plus bare integer constants, may be
 #'   joined with `+` or `-` into one notation (e.g. `1d20+1d6`, `2d20h+2d20l`,
-#'   `1d20+1d6+1d4+3`); at least one dice term is required and each keep
+#'   `1d20+1d6+1d4+3`); at least one dice term is required and each keep or drop
 #'   selector applies within its own term only. See [roll_distribution()] to
 #'   summarise many rolls.
 #' @param compare A length-1 logical. When `TRUE`, printing the roll also

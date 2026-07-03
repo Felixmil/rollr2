@@ -49,6 +49,13 @@ test_that("an explicit keep count sets the range from the kept dice", {
   expect_equal(sum(dist$counts), 1000L)
 })
 
+test_that("a drop notation samples identically to its keep equivalent (AC-5)", {
+  drop <- withr::with_seed(42, roll_distribution("4d6dl1", n = 1000))
+  keep <- withr::with_seed(42, roll_distribution("4d6h3", n = 1000))
+  expect_equal(drop$counts, keep$counts)
+  expect_equal(drop$range, keep$range)
+})
+
 test_that("a selector on a single die keeps every simulated roll", {
   withr::local_seed(42)
   dist <- roll_distribution("d20h", n = 1000)

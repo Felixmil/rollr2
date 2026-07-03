@@ -114,10 +114,15 @@ The parser accepts the following forms. The leading `d` is case-insensitive and 
 | `NdXhK` | Keep the highest `K` dice | `4d6h3` |
 | `NdXlK` | Keep the lowest `K` dice | `3d6l2` |
 | `NdXh` / `NdXl` | Keep count omitted, defaults to keeping one die | `2d20h` |
+| `NdXdlK` | Drop the lowest `K` dice (inverse of keep) | `4d6dl1` |
+| `NdXdhK` | Drop the highest `K` dice | `4d6dh1` |
+| `NdXdK` / `NdXdl` / `NdXdh` | Shorthand `d` drops the lowest; a missing count drops one die | `4d6d1` |
 | `NdXrT` | Reroll once any die showing `<= T`, keeping the new value | `2d6r2` |
 | `NdXrrT` | Reroll a die showing `<= T` until it lands above `T` | `1d20rr1` |
 
 The keep selector follows the die size and comes before the modifier, so a full notation reads count, die size, optional keep selector, optional modifier, for example `4d6h3+1`.
+
+A drop selector occupies the same slot as the keep selector and is its inverse spelling: dropping `K` of `N` dice keeps `N - K`, so `4d6dl1` (drop the lowest of four d6, the conventional D&D ability-score roll) is exactly `4d6h3`, and `4d6dh1` (drop the highest) is `4d6l3`. The shorthand `4d6d1` drops the lowest, and a missing count (`4d6dl`) drops one die. A term carries at most one selector, so keep and drop cannot be combined.
 
 ### Rerolling low dice
 
@@ -142,6 +147,7 @@ A bare `+M`/`-M` immediately after a dice term binds as that term's modifier whe
 - A missing die count means one die (`d6` is the same as `1d6`).
 - A missing modifier means no adjustment (`M = 0`).
 - A missing keep count means keep one die (`2d20h` keeps the single highest die).
+- A missing drop count means drop one die (`4d6dl` drops the single lowest die), and the shorthand `d` drops the lowest (`4d6d1` is `4d6dl1`).
 
 ### Enforced limits
 
@@ -150,6 +156,7 @@ The parser rejects notation outside these bounds with a clear error:
 - The die count must be a positive integer.
 - The die size must be an integer of at least 2.
 - The keep count must be between 1 and the die count (keeping zero dice, or more dice than were rolled, is rejected).
+- The drop count must be between 1 and one less than the die count (dropping zero dice, or dropping every die so nothing is left to sum, is rejected).
 - The reroll threshold `T` must be between 1 and the die size minus 1 (`1 <= T <= X - 1`); a threshold of 0 never fires and a threshold at or above the die size is rejected, so `2d6r0` and `2d6r6` do not parse.
 
-Non-integer counts, die sizes, and keep counts (such as `2.5d6` or `2d6h1.5`) do not parse.
+Non-integer counts, die sizes, and keep or drop counts (such as `2.5d6`, `2d6h1.5`, or `4d6dl1.5`) do not parse.
