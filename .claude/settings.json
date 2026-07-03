@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "issue-agents@issue-agents": true
-  },
   "permissions": {
     "allow": [
       "Bash(gh issue comment *)",
@@ -21,9 +18,7 @@
       "Bash(git push *)",
       "Bash(git rev-parse *)",
       "Bash(mkdir *)",
-      "Bash(jq *)",
-      "Bash(bash .claude/scripts/issue-state-transition.sh *)",
-      "Bash(bash .claude/scripts/status-transition.sh *)"
+      "Bash(jq *)"
     ]
   }
 }
