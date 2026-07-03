@@ -23,15 +23,21 @@ a drop selector \code{dl}/\code{dh}/\code{d} instead discards dice and sums the 
 shorthand \code{NdXdK} drops the lowest \code{K}; a missing count drops one die. Drop
 is the inverse spelling of keep, so \code{NdXdlK} is \code{NdXh(N-K)} and \code{NdXdhK} is
 \code{NdXl(N-K)}; \verb{4d6dl1} (the D&D ability-score roll) is \verb{4d6h3}. The drop
-count \code{K} must satisfy \verb{1 <= K <= N - 1}. An explode marker may follow the
-die size, before any keep or drop selector or modifier: \code{!} rerolls a
-maximum-face die once and sums both faces, \verb{!!} rerolls while the maximum
-recurs, capped at 100 chained rerolls per die (e.g. \verb{2d6!}, \verb{2d6!!},
-\verb{4d6!h3}). Sampling is bounded by the same cap so it always terminates;
-\code{roll_distribution()} does not itself warn on the cap. Several such terms,
-plus bare integer constants, may be joined with \code{+} or \code{-} into one
-notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}); at least one dice term is
-required and each keep or drop selector applies within its own term only.}
+count \code{K} must satisfy \verb{1 <= K <= N - 1}. A per-die marker may follow the
+die size, before any keep or drop selector or modifier: either an explode
+marker or a reroll marker, but not both (they are mutually exclusive within
+a term). The explode marker is \code{!} (rerolls a maximum-face die once and
+sums both faces) or \verb{!!} (rerolls while the maximum recurs, capped at 100
+chained rerolls per die), e.g. \verb{2d6!}, \verb{2d6!!}, \verb{4d6!h3}; sampling is
+bounded by the same cap so it always terminates, and \code{roll_distribution()}
+does not itself warn on the cap. The reroll marker is \code{rT} (rerolls any die
+showing \verb{<= T} once and keeps the new value) or \code{rrT} (rerolls a die
+showing \verb{<= T} until it lands strictly above \code{T}), where the threshold \code{T}
+is required and bounded \verb{1 <= T <= X - 1}, e.g. \verb{2d6r1}, \verb{1d20rr1},
+\verb{4d6r1h3}. Several such terms, plus bare integer constants, may be joined
+with \code{+} or \code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}); at
+least one dice term is required and each keep or drop selector applies
+within its own term only.}
 
 \item{n}{Number of whole-notation rolls to simulate. A positive integer.}
 
@@ -47,9 +53,9 @@ zero-count outcomes are omitted), \code{range} (the theoretical \code{c(min, max
 of a grand total, the sum across terms of each term's own min/max plus the
 signed constants), \code{n}, \code{terms} (the parsed per-term breakdown), and the
 original \code{notation}. For a single-term notation the parsed components
-\code{dice_n}, \code{x}, \code{m}, \code{keep}, \code{keep_n} are also present at the top level;
-they are omitted for a multi-term notation. Its \code{print()} method renders
-the counts and a text histogram for the console.
+\code{dice_n}, \code{x}, \code{m}, \code{keep}, \code{keep_n}, \code{reroll}, \code{reroll_t} are also
+present at the top level; they are omitted for a multi-term notation. Its
+\code{print()} method renders the counts and a text histogram for the console.
 }
 \description{
 Simulates \code{n} whole-notation rolls and summarises the distribution of the

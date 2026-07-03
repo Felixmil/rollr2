@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "issue-agents@issue-agents": true
-  },
   "permissions": {
     "allow": [
       "Bash(gh issue comment *)",
@@ -15,11 +12,13 @@
       "Bash(gh pr diff *)",
       "Bash(gh api *)",
       "Bash(gh repo view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh run view *)",
+      "Bash(gh run list *)",
       "Bash(git push *)",
       "Bash(git rev-parse *)",
       "Bash(mkdir *)",
-      "Bash(jq *)",
-      "Bash(bash .claude/scripts/issue-state-transition.sh *)"
+      "Bash(jq *)"
     ]
   }
 }

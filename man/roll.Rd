@@ -24,18 +24,26 @@ sums the rest: \code{NdXdlK} drops the lowest \code{K}, \code{NdXdhK} drops the 
 one die. Drop is the inverse spelling of keep, so \code{NdXdlK} is \code{NdXh(N-K)}
 and \code{NdXdhK} is \code{NdXl(N-K)}; the conventional D&D roll \verb{4d6dl1} (drop the
 lowest of four d6) is \verb{4d6h3}. The drop count \code{K} must satisfy
-\verb{1 <= K <= N - 1} (drop at least one, leave at least one). An explode
-marker may follow the die size, before any keep or drop selector or
-modifier: \code{!} rerolls a maximum-face die exactly once and sums the two
-faces (the extra die does not itself explode), while \verb{!!} keeps rerolling
-while the maximum recurs, capped at 100 chained rerolls per die. So \verb{2d6!},
-\verb{2d6!!}, \verb{4d6!h3}, and \verb{2d6!+1} are all valid. When a \verb{!!} die reaches the
-cap, \code{roll()} emits a warning while still returning a valid roll.
-Several such terms, plus bare integer constants, may be joined with \code{+} or
-\code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l}, \verb{1d20+1d6+1d4+3});
-at least one dice term is required and each keep or drop selector applies
-within its own term only. See \code{\link[=roll_distribution]{roll_distribution()}} to summarise many
-rolls.}
+\verb{1 <= K <= N - 1} (drop at least one, leave at least one). A per-die marker
+may follow the die size, before any keep or drop selector or modifier:
+either an explode marker or a reroll marker, but not both (they are
+mutually exclusive within a term). The explode marker is \code{!} (rerolls a
+maximum-face die exactly once and sums the two faces; the extra die does
+not itself explode) or \verb{!!} (keeps rerolling while the maximum recurs,
+capped at 100 chained rerolls per die). So \verb{2d6!}, \verb{2d6!!}, \verb{4d6!h3}, and
+\verb{2d6!+1} are all valid. When a \verb{!!} die reaches the cap, \code{roll()} emits a
+warning while still returning a valid roll. The reroll marker is \code{rT}
+(rerolls any die showing \verb{<= T} exactly once and keeps the new value
+unconditionally, even if it is also \verb{<= T}) or \code{rrT} (rerolls a die
+showing \verb{<= T} repeatedly until it lands strictly above \code{T}), where the
+threshold \code{T} is required and bounded \verb{1 <= T <= X - 1}. Contrast the
+explode marker: reroll replaces the die's value, it does not sum. So
+\verb{2d6r1}, \verb{1d20rr1}, \verb{4d6r1h3}, and \verb{2d6r1+2} are all valid, and reroll
+never warns. Several such terms, plus bare integer constants, may be
+joined with \code{+} or \code{-} into one notation (e.g. \verb{1d20+1d6}, \verb{2d20h+2d20l},
+\verb{1d20+1d6+1d4+3}); at least one dice term is required and each keep or drop
+selector applies within its own term only. See \code{\link[=roll_distribution]{roll_distribution()}} to
+summarise many rolls.}
 
 \item{compare}{A length-1 logical. When \code{TRUE}, printing the roll also
 shows where the total sits within the notation's full theoretical outcome
@@ -59,10 +67,12 @@ dice in term order), \code{terms} (the per-term breakdown, each element a list
 with the term's parsed fields plus its \code{dice}, \code{kept}, and \code{subtotal}),
 the original \code{notation}, and \code{compare} (the logical flag controlling the
 print method). For a single-term notation the parsed components \code{n}, \code{x},
-\code{m}, \code{keep}, \code{keep_n}, \code{explode} are also present at the top level; they
-are omitted for a multi-term notation, where per-term access via \code{terms}
-is required. For an exploding term \code{dice} still lists every physical die
-including rerolls in draw order, and \code{kept} lists the kept per-die totals.
+\code{m}, \code{keep}, \code{keep_n}, \code{explode}, \code{reroll}, \code{reroll_t} are also present at
+the top level; they are omitted for a multi-term notation, where per-term
+access via \code{terms} is required. For an exploding or reroll term \code{dice}
+still lists every physical die including rerolls in draw order (for a
+reroll term, the rerolled-away faces are listed too), and \code{kept} lists the
+kept per-die values.
 }
 \description{
 Parses a dice-notation string and simulates a single roll. A notation may

@@ -209,6 +209,36 @@ test_that("plot.roll returns a valid ggplot over the huge explode-indefinitely r
   )
 })
 
+test_that("plot.roll highlights a reroll roll over its theoretical range (AC-5)", {
+  # 2d6r1 spans the plain 2..12 range; the rolled total's bar is highlighted
+  # and its standing matches the compare/print path (the exact PMF source).
+  r <- withr::with_seed(42, roll("2d6r1"))
+  p <- plot(r)
+
+  expect_s3_class(p, "ggplot")
+  expect_equal(range(ggplot2::layer_data(p)$x), c(2, 12))
+
+  expected_percentile <- percentile_below(grand_total_pmf(r$terms), r$total)
+  expect_match(
+    p$labels$subtitle,
+    paste0("beats ", expected_percentile, "% of outcomes"),
+    fixed = TRUE
+  )
+  ld <- ggplot2::layer_data(p)
+  expect_equal(ld$x[ld$fill == "firebrick"], as.numeric(r$total))
+})
+
+test_that("plot.roll_distribution renders a reroll distribution over its range (AC-5)", {
+  d <- withr::with_seed(1, roll_distribution("1d20rr1", n = 1000))
+  p <- plot(d)
+
+  expect_s3_class(p, "ggplot")
+  # A reroll-until distribution never produces a 1, so the range is 2..20.
+  expect_equal(d$range, c(2L, 20L))
+  breaks <- integer_axis_breaks(d$range)
+  expect_true(all(breaks >= 2 & breaks <= 20))
+})
+
 test_that("plot.roll_distribution renders an exploding distribution over the capped range (AC-13)", {
   d <- withr::with_seed(1, roll_distribution("2d6!", n = 1000))
   p <- plot(d)
